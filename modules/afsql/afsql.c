@@ -385,7 +385,7 @@ afsql_dd_sql_identifier_is_sanitized(const gchar *token)
 }
 
 static void
-afsql_dd_sql_identifier_sanitize(gchar *token)
+_sanitize_sql_identifier(gchar *token)
 {
   gint i;
 
@@ -620,7 +620,7 @@ afsql_dd_validate_table(AFSqlDestDriver *self, GString *table)
   if (self->flags & AFSQL_DDF_DONT_CREATE_TABLES)
     return TRUE;
 
-  afsql_dd_sql_identifier_sanitize(table->str);
+  _sanitize_sql_identifier(table->str);
 
   if (_validated_tables_contain(self, table->str))
     return TRUE;
