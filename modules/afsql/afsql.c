@@ -371,7 +371,7 @@ static gboolean _sql_identifier_is_valid_char(gchar c)
 }
 
 static gboolean
-afsql_dd_sql_identifier_is_sanitized(const gchar *token)
+_is_sql_identifier_sanitized(const gchar *token)
 {
   gint i;
 
@@ -1243,7 +1243,7 @@ afsql_dd_init(LogPipe *s)
               self->fields[i].name = g_strdup(col->data);
               self->fields[i].type = g_strdup("text");
             }
-          if (!afsql_dd_sql_identifier_is_sanitized(self->fields[i].name))
+          if (!_is_sql_identifier_sanitized(self->fields[i].name))
             {
               msg_error("Column name is not a proper SQL name",
                         evt_tag_str("column", self->fields[i].name),
