@@ -470,7 +470,7 @@ _validated_tables_add(AFSqlDestDriver *self, const gchar *table)
 }
 
 static gboolean
-_table_is_exist(AFSqlDestDriver *self, const gchar *table, dbi_result *metadata)
+_is_table_present(AFSqlDestDriver *self, const gchar *table, dbi_result *metadata)
 {
   gboolean res = FALSE;
   GString *query_string;
@@ -625,7 +625,7 @@ afsql_dd_validate_table(AFSqlDestDriver *self, GString *table)
   if (_validated_tables_contain(self, table->str))
     return TRUE;
 
-  if (_table_is_exist(self, table->str, &db_res))
+  if (_is_table_present(self, table->str, &db_res))
     {
       /* table exists, check structure */
       success = _table_make_valid(self, db_res, table->str);
