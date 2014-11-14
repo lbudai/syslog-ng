@@ -458,15 +458,15 @@ afsql_dd_create_index(AFSqlDestDriver *self, const gchar *table, const gchar *co
 }
 
 static inline gboolean
-_validated_tables_contain(AFSqlDestDriver *self, const gchar *table)
+_is_table_conform_to_syslogng(AFSqlDestDriver *self, const gchar *table)
 {
-  return (g_hash_table_lookup(self->validated_tables, table) != NULL);
+  return (g_hash_table_lookup(self->syslogng_conform_tables, table) != NULL);
 }
 
 static inline void
-_validated_tables_add(AFSqlDestDriver *self, const gchar *table)
+_remember_table_as_syslogng_conform(AFSqlDestDriver *self, const gchar *table)
 {
-  g_hash_table_insert(self->validated_tables, g_strdup(table), GUINT_TO_POINTER(TRUE));
+  g_hash_table_insert(self->syslogng_conform_tables, g_strdup(table), GUINT_TO_POINTER(TRUE));
 }
 
 static gboolean
@@ -494,7 +494,7 @@ _is_table_present(AFSqlDestDriver *self, const gchar *table, dbi_result *metadat
 }
 
 static gboolean
-_table_make_valid(AFSqlDestDriver *self, dbi_result db_res, const gchar *table)
+_ensure_syslogng_conform_table(AFSqlDestDriver *self, dbi_result db_res, const gchar *table)
 {
   gboolean success = TRUE;
   gboolean new_transaction_started = FALSE;
@@ -612,7 +612,7 @@ _table_create(AFSqlDestDriver *self, const gchar *table)
  * NOTE: This function can only be called from the database thread.
  **/
 static gboolean
-afsql_dd_validate_table(AFSqlDestDriver *self, GString *table)
+afsql_dd_ensure_syslogng_conform_table(AFSqlDestDriver *self, GString *table)
 {
   dbi_result db_res = NULL;
   gboolean success = FALSE;
@@ -622,13 +622,13 @@ afsql_dd_validate_table(AFSqlDestDriver *self, GString *table)
 
   _sanitize_sql_identifier(table->str);
 
-  if (_validated_tables_contain(self, table->str))
+  if (_is_table_conform_to_syslogng(self, table->str))
     return TRUE;
 
   if (_is_table_present(self, table->str, &db_res))
     {
       /* table exists, check structure */
-      success = _table_make_valid(self, db_res, table->str);
+      success = _ensure_syslogng_conform_table(self, db_res, table->str);
       if (db_res)
         dbi_result_free(db_res);
     }
@@ -641,7 +641,7 @@ afsql_dd_validate_table(AFSqlDestDriver *self, GString *table)
   if (success)
     {
       /* we have successfully created/altered the destination table, record this information */
-      _validated_tables_add(self, table->str);
+      _remember_table_as_syslogng_conform(self, table->str);
     }
 
   return success;
@@ -668,7 +668,7 @@ afsql_dd_disconnect(AFSqlDestDriver *self)
 {
   dbi_conn_close(self->dbi_ctx);
   self->dbi_ctx = NULL;
-  g_hash_table_remove_all(self->validated_tables);
+  g_hash_table_remove_all(self->syslogng_conform_tables);
 }
 
 static void
@@ -766,7 +766,7 @@ afsql_dd_ensure_accessible_database_table(AFSqlDestDriver *self, LogMessage *msg
 
   log_template_format(self->table, msg, &self->template_options, LTZ_LOCAL, 0, NULL, table);
 
-  if (!afsql_dd_validate_table(self, table))
+  if (!afsql_dd_ensure_syslogng_conform_table(self, table))
     {
       /* If validate table is FALSE then close the connection and wait time_reopen time (next call) */
       msg_error("Error checking table, disconnecting from database, trying again shortly",
@@ -1386,7 +1386,7 @@ afsql_dd_free(LogPipe *s)
   string_list_free(self->indexes);
   string_list_free(self->values);
   log_template_unref(self->table);
-  g_hash_table_destroy(self->validated_tables);
+  g_hash_table_destroy(self->syslogng_conform_tables);
   g_hash_table_destroy(self->dbd_options);
   g_hash_table_destroy(self->dbd_options_numeric);
   if (self->session_statements)
@@ -1427,7 +1427,7 @@ afsql_dd_new(GlobalConfig *cfg)
   self->session_statements = NULL;
   self->num_retries = MAX_FAILED_ATTEMPTS;
 
-  self->validated_tables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  self->syslogng_conform_tables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   self->dbd_options = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
   self->dbd_options_numeric = g_hash_table_new_full(g_str_hash, g_int_equal, g_free, NULL);
 
