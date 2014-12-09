@@ -139,9 +139,35 @@ test_log_proto_padded_record_server_iso_8859_2(void)
                * becomes longer than the record size */
               "\xe1\x72\x76\xed\x7a\x74\xfb\x72\xf5\x74\xfc\x6b\xf6\x72\x66\xfa"       /*  |árvíztűrőtükörfú| */
               "\x72\xf3\x67\xe9\x70\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9", -1,  /*  |rógépééééééééééé| */
-              LTM_EOF),
-            get_inited_proto_server_options(), 32);
+              LTM_EOF), 
+              get_inited_proto_server_options(),
+              32);
   assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógépééééééééééé", -1);
+  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  log_proto_server_free(proto);
+}
+
+static void
+test_log_proto_binary_record_server_utf16le(void)
+{
+  LogProtoServer *proto;
+
+  log_proto_server_options_set_encoding(&proto_server_options, "utf-16le");
+  proto = log_proto_binary_record_server_new(
+            /* 32 bytes record size */
+            log_transport_mock_records_new(
+              "\x48\x00\x48\x00\x48\x00\x48\x00\x0a\x00\x00\x00\x00\x00\x00\x00"
+              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 32,
+              "\x61\x61\x61\x61\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 32,
+              "\x50\x00\x50\x00\x50\x00\x50\x00\x0a\x00\x00\x00\x00\x00\x00\x00"
+              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 32,
+              LTM_EOF),
+              get_inited_proto_server_options(),
+              32);
+  assert_proto_server_fetch(proto, "HHHH", 4);
+  assert_proto_server_fetch(proto, "\xE6\x85\xA1\xE6\x85\xA1", 6);
+  assert_proto_server_fetch(proto, "PPPP", 4);
   assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
@@ -156,4 +182,5 @@ test_log_proto_record_server(void)
   PROTO_TESTCASE(test_log_proto_padded_record_server_ucs4);
   PROTO_TESTCASE(test_log_proto_padded_record_server_invalid_ucs4);
   PROTO_TESTCASE(test_log_proto_padded_record_server_iso_8859_2);
+  PROTO_TESTCASE(test_log_proto_binary_record_server_utf16le);
 }
