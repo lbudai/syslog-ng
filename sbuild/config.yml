@@ -1,0 +1,6 @@
+name: syslog-ng-premium-edition
+builder:
+  name: SyslogNgBuilder
+  configure_options: --enable-dynamic-linking --disable-debug --with-libesmtp=\${prefix} --disable-amqp --with-embedded-crypto --with-ivykis=system
+platforms:
+  - linux-glibc2.11/amd64
