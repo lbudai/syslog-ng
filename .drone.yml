@@ -1,3 +1,5 @@
+image: ubuntu:precise
+
 script:
  - sudo apt-get update -qq
  - sudo apt-get install -qq pkg-config \
