@@ -1,0 +1,28 @@
+language: c
+
+script:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq pkg-config \
+                            flex \
+                            bison \
+                            xsltproc docbook-xsl \
+                            libevtlog-dev \
+                            libnet1-dev \
+                            libglib2.0-dev \
+                            libdbi0-dev \
+                            libssl-dev \
+                            libjson0-dev \
+                            libwrap0-dev \
+                            libpcre3-dev \
+                            libcap-dev \
+                            libesmtp-dev \
+                            libgeoip-dev \
+                            lcov
+ - sudo pip install nose ply pep8 pylint
+ - ./autogen.sh
+ - ./configure --with-ivykis=internal --prefix=$HOME/install/syslog-ng --enable-pacct CFLAGS="-Wall -O3"
+ - make
+ - make distcheck
+ - make func-test
+
+
