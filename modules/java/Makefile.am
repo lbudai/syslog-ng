@@ -94,7 +94,7 @@ $(JAVA_CLASS_PATH)/SyslogNgClassLoader.class: $(JAVA_SRC_DIR)/SyslogNgClassLoade
 $(JAVA_CLASS_PATH)/LogMessage.class: $(JAVA_SRC_DIR)/LogMessage.java
 	$(JAVAC) -d ./ -cp ./ $<
 
-$(JAVA_CLASS_PATH)/LogTemplate.class: $(JAVA_SRC_DIR)/LogTemplate.java
+$(JAVA_CLASS_PATH)/LogTemplate.class: $(JAVA_SRC_DIR)/LogTemplate.java $(JAVA_CLASS_PATH)/LogMessage.class
 	$(JAVAC) -d ./ -cp ./ $<
 
 $(JAVA_CLASS_PATH)/LogPipe.class: $(JAVA_SRC_DIR)/LogPipe.java $(JAVA_CLASS_PATH)/InternalMessageSender.class
