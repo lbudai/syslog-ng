@@ -1,7 +1,7 @@
 if ENABLE_JAVA
 
 JAVA_MOD_DST_DIR=$(DESTDIR)/$(moduledir)/java-modules
-JARS=$(shell find $(abs_top_builddir)/modules/java-modules -name '*.jar')
+JARS+=$(shell find $(abs_top_builddir)/modules/java-modules -name '*.jar')
 
 java-modules:
 	 $(AM_V_GEN) $(GRADLE) -p $(abs_top_srcdir)/modules/java-modules -PsyslogBuildDir=$(abs_top_builddir)/modules/java-modules -PsyslogDepsDir=$(abs_top_builddir)/modules/java/syslog-ng-core/libs build > "$(top_builddir)/modules/java-modules/gradle-java-modules.log"
