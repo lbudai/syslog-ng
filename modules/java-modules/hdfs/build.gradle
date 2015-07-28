@@ -8,16 +8,18 @@ repositories {
    flatDir {
        dirs syslogDepsDir
        dirs syslogBuildDir + '/common/gradle/libs'
+       dirs '/usr/lib/syslog-ng-java-module-dependency-jars/jars'
    }
 }
 
 dependencies {
+    compile fileTree(dir: "/usr/lib/syslog-ng-java-module-dependency-jars/jars", includes: ['hadoop*.jar'])
+    compile name: 'commons-lang-2.6'
+    compile name: 'log4j-1.2.17'
     compile "org.apache.hadoop:hadoop-hdfs:2.7.1"
     compile 'org.apache.hadoop:hadoop-common:2.7.1'
     compile 'org.apache.hadoop:hadoop-core:1.2.1'
     compile name: 'syslog-ng-common'
     compile name: 'syslog-ng-core'
     compile 'log4j:log4j:1.2.17'
-
-
 }
