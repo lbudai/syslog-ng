@@ -311,12 +311,14 @@ afsocket_dd_setup_addresses_method(AFSocketDestDriver *self)
   return TRUE;
 }
 
-static void
-afsocket_dd_restore_connection(AFSocketDestDriver *self)
+static gboolean
+afsocket_dd_restore_writer(AFSocketDestDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
+  LogWriter *fetched_writer = cfg_persist_config_fetch(cfg, afsocket_dd_format_persist_name(self, FALSE));
 
-  self->writer = cfg_persist_config_fetch(cfg, afsocket_dd_format_persist_name(self, FALSE));
+  if (fetched_writer)
+      self->writer = fetched_writer;
 }
 
 
@@ -335,11 +337,15 @@ afsocket_dd_construct_writer_method(AFSocketDestDriver *self)
 static gboolean
 afsocket_dd_setup_writer(AFSocketDestDriver *self)
 {
+  afsocket_dd_restore_writer(self);
+
+  if (self->writer && log_pipe_is_initialized(self->writer))
+    return TRUE;
+
   if (!self->writer)
     {
       /* NOTE: we open our writer with no fd, so we can send messages down there
        * even while the connection is not established */
-
       self->writer = afsocket_dd_construct_writer(self);
     }
   log_writer_set_options(self->writer, &self->super.super.super,
@@ -367,10 +373,6 @@ afsocket_dd_setup_connection(AFSocketDestDriver *self)
 
   self->time_reopen = cfg->time_reopen;
 
-  afsocket_dd_restore_connection(self);
-  if (!afsocket_dd_setup_writer(self))
-    return FALSE;
-
   if (!log_writer_opened(self->writer))
     afsocket_dd_reconnect(self);
 
@@ -382,12 +384,14 @@ gboolean
 afsocket_dd_init(LogPipe *s)
 {
   AFSocketDestDriver *self = (AFSocketDestDriver *) s;
-
   if (!log_dest_driver_init_method(s) ||
       !afsocket_dd_setup_transport(self))
     {
       return FALSE;
     }
+
+  if (!afsocket_dd_setup_writer(self))
+    return FALSE;
 
   afsocket_dd_try_connect(self);
   return TRUE;

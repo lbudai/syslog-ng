@@ -239,6 +239,12 @@ void log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg);
 void log_pipe_forward_notify(LogPipe *self, gint notify_code, gpointer user_data);
 EVTTAG *log_pipe_location_tag(LogPipe *pipe);
 
+static inline gboolean
+log_pipe_is_initialized(LogPipe *s)
+{
+  return (s->flags & PIF_INITIALIZED) != 0;
+}
+
 static inline GlobalConfig *
 log_pipe_get_config(LogPipe *s)
 {
