@@ -72,6 +72,7 @@ EXTRA_DIST += \
 	modules/java-modules/common/src/main/java/org/syslog_ng/options/IntegerRangeCheckOptionDecorator.java \
 	modules/java-modules/common/src/main/java/org/syslog_ng/options/IntegerOptionDecorator.java \
 	modules/java-modules/common/src/main/java/org/syslog_ng/options/StringOption.java \
+	modules/java-modules/common/src/main/java/org/syslog_ng/options/DependentOptionDecorator.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestEnumOptionDecorator.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestRequiredOptionDecorator.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestStringOption.java \
@@ -80,6 +81,7 @@ EXTRA_DIST += \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestIntegerRangeCheckOptionDecorator.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestOption.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestIntegerOptionDecorator.java \
+	modules/java-modules/common/src/test/java/org/syslog_ng/options/test/TestDependentOptionDecorator.java \
 	modules/java-modules/common/src/test/java/org/syslog_ng/logging/test/MockLogDestination.java \
 	modules/java-modules/hdfs/src/main/java/org/syslog_ng/hdfs/HdfsDestination.java \
 	modules/java-modules/hdfs/src/main/java/org/syslog_ng/hdfs/HdfsOptions.java \
