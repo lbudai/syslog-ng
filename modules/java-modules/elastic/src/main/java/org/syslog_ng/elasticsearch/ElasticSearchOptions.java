@@ -165,9 +165,11 @@ public class ElasticSearchOptions {
 		options.put(new StringOption(owner, CONFIG_FILE));
 		options.put(new IntegerRangeCheckOptionDecorator(new StringOption(owner, CONCURRENT_REQUESTS, CONCURRENT_REQUESTS_DEFAULT), 0, Integer.MAX_VALUE));
 		options.put(new StringOption(owner, SHIELD_CREDENTIALS));
-		options.put(new StringOption(owner, SHIELD_KEYSTORE_PATH));
+/*		options.put(new StringOption(owner, SHIELD_KEYSTORE_PATH));
 		options.put(new StringOption(owner, SHIELD_KEYSTORE_PWD));
 		options.put(new StringOption(owner, SHIELD_TRUSTSTORE_PATH));
-		options.put(new StringOption(owner, SHIELD_TRUSTSTORE_PWD));
+		options.put(new StringOption(owner, SHIELD_TRUSTSTORE_PWD));*/
+		options.put(new DependentOptionDecorator(new StringOption(owner, SHIELD_KEYSTORE_PATH), new StringOption(owner, SHIELD_KEYSTORE_PWD)));
+		options.put(new DependentOptionDecorator(new StringOption(owner, SHIELD_TRUSTSTORE_PATH), new StringOption(owner, SHIELD_TRUSTSTORE_PWD)));
 	}
 }

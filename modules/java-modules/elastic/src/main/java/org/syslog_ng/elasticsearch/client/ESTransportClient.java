@@ -39,7 +39,7 @@ public class ESTransportClient extends ESClient {
 		super(options);
 	}
 
-	public Client createClient() {
+	private Settings buildSettings() {
 		String clusterName = options.getCluster();
 		String shieldCredentials = options.getShieldCredentials();
 		String shieldKeystorePath = options.getShieldKeystorePath();
@@ -70,7 +70,11 @@ public class ESTransportClient extends ESClient {
 			settingsBuilder = settingsBuilder.put("shield.ssl.truststore.password", shieldTruststorePassword);
 		}
 
-		settings = settingsBuilder.build();
+		return settingsBuilder.build();
+	}
+
+	public Client createClient() {
+		settings = buildSettings();
 
 		String[] servers =  options.getServerList();
 
