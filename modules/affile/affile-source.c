@@ -53,6 +53,10 @@
 #define DEFAULT_SD_OPEN_FLAGS (O_RDONLY | O_NOCTTY | O_NONBLOCK | O_LARGEFILE)
 #define DEFAULT_SD_OPEN_FLAGS_PIPE (O_RDWR | O_NOCTTY | O_NONBLOCK | O_LARGEFILE)
 
+#define AFFILE_SD_OPEN_IMMEDIATE_CHECK 0x0001
+#define AFFILE_SD_OPEN_RECOVER_STATE 0x0002
+
+
 gboolean
 affile_sd_set_multi_line_mode(LogDriver *s, const gchar *mode)
 {
@@ -254,57 +258,101 @@ affile_sd_construct_proto(AFFileSourceDriver *self, gint fd)
     }
 }
 
-static void
-affile_sd_reopen_on_notify(LogPipe *s, gboolean recover_state)
+static LogReader*
+_deinit_reader(LogReader *reader)
+{
+  log_pipe_deinit((LogPipe *) reader);
+  log_pipe_unref((LogPipe *) reader);
+  
+  return NULL;
+}
+
+static LogReader *
+_sd_log_reader_reopen(LogPipe *s, gint fd, LogProtoServer **proto)
+{
+  AFFileSourceDriver *self = (AFFileSourceDriver *) s;
+  LogReader *reader = NULL;
+  PollEvents *poll_events = NULL;
+
+  *proto = NULL;
+  poll_events = affile_sd_construct_poll_events(self, fd);
+
+  if (!poll_events)
+    return NULL;
+
+  *proto =  affile_sd_construct_proto(self, fd);
+  reader = log_reader_new(self->super.super.super.cfg);
+  log_reader_reopen(reader, *proto, poll_events);
+
+  log_reader_set_options(reader,
+                         s,
+                         &self->reader_options,
+                         STATS_LEVEL1,
+                         SCS_FILE,
+                         self->super.super.id,
+                         self->filename->str);
+  return reader;
+}
+
+
+static gboolean
+_sd_init_opened_file(LogPipe *s, gint fd, guint32 flags)
 {
   AFFileSourceDriver *self = (AFFileSourceDriver *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
+  LogProtoServer *proto;
+
+  self->reader = _sd_log_reader_reopen(s, fd, &proto);
+  if (!self->reader)
+    {
+      close(fd);
+      return FALSE;
+    }
+
+  if (flags & AFFILE_SD_OPEN_IMMEDIATE_CHECK)
+    log_reader_set_immediate_check(self->reader);
+
+  log_pipe_append((LogPipe *) self->reader, s);
+  if (!log_pipe_init((LogPipe *) self->reader))
+    {
+      msg_error("Error initializing log_reader, closing fd",
+                evt_tag_int("fd", fd),
+                NULL);
+      log_pipe_unref((LogPipe *) self->reader);
+      self->reader = NULL;
+      close(fd);
+      return FALSE;
+    }
+  if (flags & AFFILE_SD_OPEN_RECOVER_STATE)
+    affile_sd_recover_state(s, cfg, proto);
+
+  return TRUE;
+}
+
+static void
+affile_sd_reopen_on_notify(LogPipe *s, guint32 flags)
+{
+  AFFileSourceDriver *self = (AFFileSourceDriver *) s;
   gint fd;
 
-  log_pipe_deinit((LogPipe *) self->reader);
-  log_pipe_unref((LogPipe *) self->reader);
-  self->reader = NULL;
+  self->reader = _deinit_reader(self->reader);
 
   if (affile_sd_open_file(self, self->filename->str, &fd))
     {
-      LogProtoServer *proto;
-      PollEvents *poll_events;
-
-      poll_events = affile_sd_construct_poll_events(self, fd);
-      if (!poll_events)
-        {
-          close(fd);
-          return;
-        }
-
-      proto = affile_sd_construct_proto(self, fd);
-
-      self->reader = log_reader_new(self->super.super.super.cfg);
-      log_reader_reopen(self->reader, proto, poll_events);
-
-      log_reader_set_options(self->reader,
-                             s,
-                             &self->reader_options,
-                             STATS_LEVEL1,
-                             SCS_FILE,
-                             self->super.super.id,
-                             self->filename->str);
-      log_reader_set_immediate_check(self->reader);
-
-      log_pipe_append((LogPipe *) self->reader, s);
-      if (!log_pipe_init((LogPipe *) self->reader))
-        {
-          msg_error("Error initializing log_reader, closing fd",
-                    evt_tag_int("fd", fd),
-                    NULL);
-          log_pipe_unref((LogPipe *) self->reader);
-          self->reader = NULL;
-          close(fd);
-          return;
-        }
-      if (recover_state)
-        affile_sd_recover_state(s, cfg, proto);
+      _sd_init_opened_file(s, fd, flags);
     }
+}
+
+static void
+_on_nc_file_moved(LogPipe *s)
+{
+  affile_sd_reopen_on_notify(s, AFFILE_SD_OPEN_IMMEDIATE_CHECK|AFFILE_SD_OPEN_RECOVER_STATE);
+}
+
+static void
+_on_nc_read_error(LogPipe *s)
+{
+  affile_sd_reopen_on_notify(s, AFFILE_SD_OPEN_IMMEDIATE_CHECK);
 }
 
 /* NOTE: runs in the main thread */
@@ -320,7 +368,7 @@ affile_sd_notify(LogPipe *s, gint notify_code, gpointer user_data)
         msg_verbose("Follow-mode file source moved, tracking of the new file is started",
                     evt_tag_str("filename", self->filename->str),
                     NULL);
-        affile_sd_reopen_on_notify(s, TRUE);
+        _on_nc_file_moved(s);
         break;
       }
     case NC_READ_ERROR:
@@ -328,7 +376,7 @@ affile_sd_notify(LogPipe *s, gint notify_code, gpointer user_data)
         msg_verbose("Error while following source file, reopening in the hope it would work",
                     evt_tag_str("filename", self->filename->str),
                     NULL);
-        affile_sd_reopen_on_notify(s, FALSE);
+        _on_nc_read_error(s);
         break;
       }
     default:
@@ -381,43 +429,8 @@ affile_sd_init(LogPipe *s)
 
   if (file_opened || open_deferred)
     {
-      LogProtoServer *proto;
-      PollEvents *poll_events;
-
-      poll_events = affile_sd_construct_poll_events(self, fd);
-      if (!poll_events)
-        {
-          close(fd);
-          return FALSE;
-        }
-
-      proto = affile_sd_construct_proto(self, fd);
-      self->reader = log_reader_new(self->super.super.super.cfg);
-      log_reader_reopen(self->reader, proto, poll_events);
-
-      log_reader_set_options(self->reader,
-                             s,
-                             &self->reader_options,
-                             STATS_LEVEL1,
-                             SCS_FILE,
-                             self->super.super.id,
-                             self->filename->str);
-      /* NOTE: if the file could not be opened, we ignore the last
-       * remembered file position, if the file is created in the future
-       * we're going to read from the start. */
-      
-      log_pipe_append((LogPipe *) self->reader, s);
-      if (!log_pipe_init((LogPipe *) self->reader))
-        {
-          msg_error("Error initializing log_reader, closing fd",
-                    evt_tag_int("fd", fd),
-                    NULL);
-          log_pipe_unref((LogPipe *) self->reader);
-          self->reader = NULL;
-          close(fd);
-          return FALSE;
-        }
-      affile_sd_recover_state(s, cfg, proto);
+      if (!_sd_init_opened_file(s, fd, AFFILE_SD_OPEN_RECOVER_STATE))
+        return FALSE;
     }
   else
     {
