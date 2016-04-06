@@ -1,17 +1,17 @@
 [submodule "lib/ivykis"]
-        path = lib/ivykis
-        url = https://github.com/buytenh/ivykis.git
-        ignore = dirty
+	path = lib/ivykis
+	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/ivykis
+    ignore = dirty
 [submodule "lib/jsonc"]
-        path = lib/jsonc
-        url = https://github.com/json-c/json-c.git
-        ignore = dirty
+	path = lib/jsonc
+	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/json-c
+    ignore = dirty
 [submodule "modules/afamqp/rabbitmq-c"]
-        path = modules/afamqp/rabbitmq-c
-        url = https://github.com/alanxz/rabbitmq-c.git
-        ignore = dirty
+	path = modules/afamqp/rabbitmq-c
+	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/rabbitmq-c.git
+    ignore = dirty
 [submodule "modules/afmongodb/mongo-c-driver"]
-        path = modules/afmongodb/mongo-c-driver
-        url = https://github.com/mongodb/mongo-c-driver.git
-        branch = 1.2.0-dev
-        ignore = dirty
+	path = modules/afmongodb/mongo-c-driver
+	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/mongo-c-driver.git
+	branch = 1.2.0-dev
+    ignore = dirty
