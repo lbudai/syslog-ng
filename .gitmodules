@@ -6,10 +6,6 @@
 	path = lib/jsonc
 	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/json-c
     ignore = dirty
-[submodule "modules/afamqp/rabbitmq-c"]
-	path = modules/afamqp/rabbitmq-c
-	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/rabbitmq-c.git
-    ignore = dirty
 [submodule "modules/afmongodb/mongo-c-driver"]
 	path = modules/afmongodb/mongo-c-driver
 	url = git@gitlab.syslog-ng.balabit:syslog-ng-team/mongo-c-driver.git

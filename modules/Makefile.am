@@ -5,7 +5,7 @@ include modules/afstreams/Makefile.am
 include modules/affile/Makefile.am
 include modules/afprog/Makefile.am
 include modules/afuser/Makefile.am
-include modules/afamqp/Makefile.am
+#include modules/afamqp/Makefile.am
 include modules/afmongodb/Makefile.am
 include modules/afsmtp/Makefile.am
 include modules/http/Makefile.am
