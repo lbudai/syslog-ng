@@ -201,32 +201,36 @@ static GHashTable *
 kvtagger_classify_array(const GArray *const record_array)
 {
   GHashTable *selector_lookup_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
-  gsize range_start = 0;
-  database_record range_start_kv = g_array_index(record_array, database_record, 0);
 
-  for (gsize i = 1; i < record_array->len; ++i)
+  if (record_array->len > 0)
     {
-      database_record current_record = g_array_index(record_array, database_record, i);
+      gsize range_start = 0;
+      database_record range_start_kv = g_array_index(record_array, database_record, 0);
 
-      if (_kv_comparer(&range_start_kv, &current_record))
+      for (gsize i = 1; i < record_array->len; ++i)
         {
-          element_range *current_range = g_new(element_range, 1);
-          current_range->offset = range_start;
-          current_range->length = i - range_start;
+          database_record current_record = g_array_index(record_array, database_record, i);
 
-          g_hash_table_insert(selector_lookup_table, range_start_kv.selector, current_range);
+          if (_kv_comparer(&range_start_kv, &current_record))
+            {
+              element_range *current_range = g_new(element_range, 1);
+              current_range->offset = range_start;
+              current_range->length = i - range_start;
 
-          range_start_kv = current_record;
-          range_start = i;
+              g_hash_table_insert(selector_lookup_table, range_start_kv.selector, current_range);
+
+              range_start_kv = current_record;
+              range_start = i;
+            }
         }
-    }
 
-  {
-    element_range *last_range = g_new(element_range, 1);
-    last_range->offset = range_start;
-    last_range->length = record_array->len - range_start;
-    g_hash_table_insert(selector_lookup_table, range_start_kv.selector, last_range);
-  }
+      {
+        element_range *last_range = g_new(element_range, 1);
+        last_range->offset = range_start;
+        last_range->length = record_array->len - range_start;
+        g_hash_table_insert(selector_lookup_table, range_start_kv.selector, last_range);
+      }
+    }
 
   return selector_lookup_table;
 }
