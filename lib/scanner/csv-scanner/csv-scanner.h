@@ -26,6 +26,7 @@
 #define CSVSCANNER_H_INCLUDED
 
 #include "syslog-ng.h"
+#include "scanner/scanner.h"
 
 typedef enum
 {
@@ -65,6 +66,7 @@ void csv_scanner_options_set_null_value(CSVScannerOptions *options, const gchar 
 
 typedef struct _CSVScanner
 {
+  Scanner super;
   CSVScannerOptions *options;
   GList *current_column;
   const gchar *src;

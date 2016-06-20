@@ -376,18 +376,6 @@ csv_scanner_get_current_name(CSVScanner *self)
   return (const gchar *) self->current_column->data;
 }
 
-const gchar *
-csv_scanner_get_current_value(CSVScanner *self)
-{
-  return self->current_value->str;
-}
-
-gint
-csv_scanner_get_current_value_len(CSVScanner *self)
-{
-  return self->current_value->len;
-}
-
 gboolean
 csv_scanner_is_scan_finished(CSVScanner *self)
 {
@@ -422,4 +410,11 @@ void
 csv_scanner_state_clean(CSVScanner *self)
 {
   g_string_free(self->current_value, TRUE);
+}
+
+csv_scanner_init(CSVScanner *self)
+{
+  self->super.scan_input = csv_scanner_input;
+  self->super.scan_next = csv_scanner_scan_next;
+  self->super.is_scan_finished = csv_scanner_is_scan_finished;
 }
