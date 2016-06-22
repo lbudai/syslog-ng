@@ -20,30 +20,19 @@
  *
  */
 
-typedef struct _Scanner
-{
-  GString *current_value;
+#ifndef SCANNER_H_INCLUDED
+#define SCANNER_H_INCLUDED
 
+#include <syslog-ng.h>
+
+typedef struct _Scanner Scanner;
+
+struct _Scanner
+{
   void (*scan_input)(Scanner *pstate, const gchar *input);
   gboolean (*scan_next)(Scanner *pstate);
   gboolean (*is_scan_finished)(Scanner *pstate);
 
-} Scanner;
+};
 
-void scanner_input(Scanner *pstate, const gchar *input);
-gboolean csv_scanner_scan_next(CSVScanner *pstate);
-gboolean csv_scanner_is_scan_finished(CSVScanner *pstate);
-const gchar *csv_scanner_get_current_value(CSVScanner *pstate);
-gint csv_scanner_get_current_value_len(CSVScanner *self);
-
-static inline const gchar *
-scanner_get_current_value(CSVScanner *self)
-{
-  return self->current_value->str;
-}
-
-static inline gint
-scanner_get_current_value_len(CSVScanner *self)
-{
-  return self->current_value->len;
-}
+#endif

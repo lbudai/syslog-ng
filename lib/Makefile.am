@@ -13,7 +13,7 @@ include lib/control/Makefile.am
 include lib/debugger/Makefile.am
 include lib/compat/Makefile.am
 include lib/logmsg/Makefile.am
-include lib/scanner/csv-scanner/Makefile.am
+include lib/scanner/Makefile.am
 
 LSNG_RELEASE		= $(shell echo @PACKAGE_VERSION@ | cut -d. -f1,2)
 

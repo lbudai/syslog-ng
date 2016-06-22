@@ -26,7 +26,6 @@
 #define CSVSCANNER_H_INCLUDED
 
 #include "syslog-ng.h"
-#include "scanner/scanner.h"
 
 typedef enum
 {
@@ -66,7 +65,6 @@ void csv_scanner_options_set_null_value(CSVScannerOptions *options, const gchar 
 
 typedef struct _CSVScanner
 {
-  Scanner super;
   CSVScannerOptions *options;
   GList *current_column;
   const gchar *src;
@@ -79,6 +77,7 @@ const gchar *csv_scanner_get_current_value(CSVScanner *pstate);
 gint csv_scanner_get_current_value_len(CSVScanner *self);
 gboolean csv_scanner_scan_next(CSVScanner *pstate);
 gboolean csv_scanner_is_scan_finished(CSVScanner *pstate);
+gchar *csv_scanner_dup_current_value(CSVScanner *self);
 
 void csv_scanner_input(CSVScanner *pstate, const gchar *input);
 gboolean csv_scanner_parse_input(CSVScanner *pstate);

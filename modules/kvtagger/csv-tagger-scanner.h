@@ -20,6 +20,21 @@
  *
  */
 
+#ifndef CSV_TAGGER_SCANNER_H_INCLUDED
+#define CSV_TAGGER_SCANNER_H_INCLUDED
 
-void scanner_input(Scanner *pstate, const gchar *input);
-gboolean scanner_parse_input(Scanner *pstate);
+#include "tagger-scanner.h"
+#include "scanner/csv-scanner/csv-scanner.h"
+
+typedef struct _CSVTaggerScanner
+{
+    TaggerScanner super;
+    CSVScanner scanner;
+    CSVScannerOptions options;
+    database_record last_record;
+
+} CSVTaggerScanner;
+
+CSVTaggerScanner* csv_tagger_scanner_new(); 
+
+#endif

@@ -22,21 +22,15 @@
  */
 
 #include "kvtagger.h"
+#include "tagger-scanner.h"
+#include "csv-tagger-scanner.h"
 #include "logmsg/logmsg.h"
 #include "logpipe.h"
 #include "parser/parser-expr.h"
 #include "template/templates.h"
 #include "reloc.h"
-#include <glib.h>
 #include <stdio.h>
 #include <string.h>
-
-typedef struct database_record
-{
-  const gchar *selector;
-  const gchar *name;
-  const gchar *value;
-} database_record;
 
 typedef struct element_range
 {
@@ -50,7 +44,8 @@ typedef struct KVTagger
   GArray *nv_array;
   GHashTable *selector_lookup_table;
   LogTemplate *selector_template;
-  const gchar *filename;
+  gchar *filename;
+  TaggerScanner *scanner;
 } KVTagger;
 
 void
@@ -122,13 +117,16 @@ kvtagger_parser_free(LogPipe *s)
   KVTagger *self = (KVTagger *)s;
 
   g_free(self->filename);
+  g_free(self->scanner);
   log_parser_free_method(s);
 }
 
 static gint
-_kv_comparer(const database_record *k1, const database_record *k2)
+_kv_comparer(gconstpointer k1, gconstpointer k2)
 {
-  return strcmp(k1->selector, k2->selector);
+  database_record* r1 = (database_record *) k1;
+  database_record* r2 = (database_record *) k2;
+  return strcmp(r1->selector, r2->selector);
 }
 
 static gboolean
@@ -162,32 +160,11 @@ _open_data_file(const gchar *filename)
   return f;
 }
 
-static const int NUMBER_OF_ITEMS_PER_LINE = 3;
 
 static GArray *
-_parse_csv_file(FILE *file)
+_parse_input_file(KVTagger *self, FILE *file)
 {
-  GArray *nv_array = g_array_new(FALSE, FALSE, sizeof(database_record));
-
-  static gchar tablekey[1024];
-  static gchar tagname[1024];
-  static gchar tagvalue[1024];
-
-  for (int i = 0; !feof(file); ++i)
-    {
-      if (fscanf(file, " %[^,] , %[^,] , %[^,\n] \n", tablekey, tagname, tagvalue) ==
-          NUMBER_OF_ITEMS_PER_LINE)
-        {
-          database_record last_record = {
-              .selector = g_strdup(tablekey),
-              .name = g_strdup(tagname),
-              .value = g_strdup(tagvalue)
-          };
-
-          g_array_append_val(nv_array, last_record);
-        }
-    }
-
+  GArray* nv_array = self->scanner->get_parsed_records(self->scanner, file);
   return nv_array;
 }
 
@@ -236,8 +213,39 @@ kvtagger_classify_array(const GArray *const record_array)
 }
 
 static gboolean
+_prepare_scanner(KVTagger *self)
+{
+  gsize filename_len = strlen(self->filename);
+  if (filename_len >= 3)
+    {
+      gsize diff = filename_len - 3;
+      const gchar* extension = self->filename+diff;
+      if (strcmp(extension, "csv") == 0)
+        {
+
+          GlobalConfig *cfg = log_pipe_get_config(&self->super.super);
+          self->scanner = (TaggerScanner *) csv_tagger_scanner_new(cfg);
+        }
+      else
+        {
+            return FALSE;
+        }
+    }
+  else
+    {
+      return FALSE;
+    }
+   return TRUE;
+}
+
+static gboolean
 kvtagger_create_lookup_table_from_file(KVTagger *self)
 {
+  if (!_prepare_scanner(self))
+    {
+      msg_error("Unknown file extension", evt_tag_str("filename", self->filename));
+      return FALSE;
+    }
 
   FILE *f = _open_data_file(self->filename);
   if (!f)
@@ -246,7 +254,7 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
       return FALSE;
     }
 
-  self->nv_array = _parse_csv_file(f);
+  self->nv_array = _parse_input_file(self, f);
 
   fclose(f);
 
@@ -293,6 +301,7 @@ kvtagger_parser_new(GlobalConfig *cfg)
   self->super.super.deinit = kvtagger_parser_deinit;
   self->super.super.free_fn = kvtagger_parser_free;
   self->super.super.init = kvtagger_parser_init;
+  self->scanner = NULL;
 
   return &self->super;
 }
