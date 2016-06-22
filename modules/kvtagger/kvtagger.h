@@ -33,5 +33,6 @@ LogParser *kvtagger_parser_new(GlobalConfig *cfg);
 LogTemplateOptions * kvtagger_get_template_options(LogParser *d);
 void kvtagger_set_database_key_template(LogParser *p, const gchar *key);
 void kvtagger_set_filename(LogParser *p, const gchar * filename);
+void kvtagger_set_database_selector_template(LogParser *p, const gchar *selector);
 
 #endif
