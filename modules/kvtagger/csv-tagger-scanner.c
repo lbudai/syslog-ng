@@ -22,6 +22,7 @@
 
 #include "csv-tagger-scanner.h"
 #include "scanner/csv-scanner/csv-scanner.h"
+#include "string-list.h"
 
 
 gboolean
@@ -62,23 +63,14 @@ static GArray* csv_tagger_scanner_get_parsed_records(TaggerScanner *s, FILE *fil
   return nv_array;
 }
 
-void
-_get_columns(GList* columns)
-{
-  columns = g_list_append(columns, "selector");
-  columns = g_list_append(columns, "name");
-  columns = g_list_append(columns, "value");
-}
-
 CSVTaggerScanner*
 csv_tagger_scanner_new()
 {
   CSVTaggerScanner *self = g_new0(CSVTaggerScanner, 1);
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
-  GList *columns = NULL;
-  _get_columns(columns);
-  csv_scanner_options_set_columns(&self->options, columns);
+  const gchar *column_array[] = {"selector", "name", "value", NULL};
+  csv_scanner_options_set_columns(&self->options, string_array_to_list(column_array));
   csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
   csv_scanner_state_init(&self->scanner, &self->options);
