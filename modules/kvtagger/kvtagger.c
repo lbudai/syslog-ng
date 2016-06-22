@@ -257,7 +257,11 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
   self->nv_array = _parse_input_file(self, f);
 
   fclose(f);
-
+  if (!self->nv_array)
+    {
+      msg_error("Error while parsing kvtagger database");
+      return FALSE;
+    }
   kvtagger_sort_array_by_key(self->nv_array);
   self->selector_lookup_table = kvtagger_classify_array(self->nv_array);
 
