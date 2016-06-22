@@ -58,7 +58,7 @@ kvtagger_set_filename(LogParser *p, const gchar *filename)
 }
 
 void
-kvtagger_set_database_selector_template(LogParser *p, const char *selector)
+kvtagger_set_database_selector_template(LogParser *p, const gchar *selector)
 {
   KVTagger *self = (KVTagger *)p;
 
