@@ -55,8 +55,8 @@ static GArray* csv_tagger_scanner_get_parsed_records(TaggerScanner *s, FILE *fil
         }
       else
         {
-            g_array_free(nv_array, TRUE);
-            return NULL;
+          g_array_free(nv_array, TRUE);
+          return NULL;
         }
     }
   return nv_array;
