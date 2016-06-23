@@ -48,7 +48,7 @@ static GArray* csv_tagger_scanner_get_parsed_records(TaggerScanner *s, FILE *fil
   gchar line[3072];
   database_record last_record;
   GArray *nv_array = g_array_new(FALSE, FALSE, sizeof(database_record));
-  while(fscanf(file,"%3071s\n", line) == 1)
+  while(fgets(line, 3072, file))
     {
       if (_get_next_record(self, line, &last_record))
         {
