@@ -21,14 +21,15 @@
  *
  */
 
-#include "kvtagger.h"
-#include "tagger-scanner.h"
 #include "csv-tagger-scanner.h"
+#include "kvtagger.h"
 #include "logmsg/logmsg.h"
 #include "logpipe.h"
 #include "parser/parser-expr.h"
-#include "template/templates.h"
 #include "reloc.h"
+#include "tagger-scanner.h"
+#include "template/templates.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -42,10 +43,10 @@ typedef struct KVTagger
 {
   LogParser super;
   GArray *nv_array;
-  GHashTable *selector_lookup_table;
+  GHashTable *tag_record_store;
   LogTemplate *selector_template;
   gchar *filename;
-  TaggerScanner *scanner;
+  TagRecordScanner *scanner;
 } KVTagger;
 
 void
@@ -66,9 +67,9 @@ kvtagger_set_database_selector_template(LogParser *p, const gchar *selector)
 }
 
 static inline element_range const *
-kvtagger_lookup_key(KVTagger *const self, const gchar *const key)
+kvtagger_lookup_tag(KVTagger *const self, const gchar *const key)
 {
-  return g_hash_table_lookup(self->selector_lookup_table, key);
+  return g_hash_table_lookup(self->tag_record_store, key);
 }
 
 static gboolean
@@ -82,16 +83,16 @@ kvtagger_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *p
 
   log_template_format(self->selector_template, msg, NULL, LTZ_LOCAL, 0, NULL, str);
 
-  const element_range *range_of_elements_to_be_injected = kvtagger_lookup_key(self, str->str);
+  const element_range *position_of_tags_to_be_inserted = kvtagger_lookup_tag(self, str->str);
 
-  if (range_of_elements_to_be_injected != NULL)
+  if (position_of_tags_to_be_inserted != NULL)
     {
-      for (gsize i = range_of_elements_to_be_injected->offset;
-           i < range_of_elements_to_be_injected->offset + range_of_elements_to_be_injected->length;
+      for (gsize i = position_of_tags_to_be_inserted->offset;
+           i < position_of_tags_to_be_inserted->offset + position_of_tags_to_be_inserted->length;
            ++i)
         {
-          database_record KV = g_array_index(self->nv_array, database_record, i);
-          log_msg_set_value_by_name(msg, KV.name, KV.value, -1);
+          tag_record matching_tag = g_array_index(self->nv_array, tag_record, i);
+          log_msg_set_value_by_name(msg, matching_tag.name, matching_tag.value, -1);
         }
     }
 
@@ -106,7 +107,7 @@ kvtagger_parser_clone(LogPipe *s)
 
   cloned->super.template = log_template_ref(self->super.template);
   cloned->nv_array = g_array_ref(self->nv_array);
-  cloned->selector_lookup_table = g_hash_table_ref(self->selector_lookup_table);
+  cloned->tag_record_store = g_hash_table_ref(self->tag_record_store);
 
   return &cloned->super.super;
 }
@@ -124,8 +125,8 @@ kvtagger_parser_free(LogPipe *s)
 static gint
 _kv_comparer(gconstpointer k1, gconstpointer k2)
 {
-  database_record* r1 = (database_record *) k1;
-  database_record* r2 = (database_record *) k2;
+  tag_record* r1 = (tag_record *) k1;
+  tag_record* r2 = (tag_record *) k2;
   return strcmp(r1->selector, r2->selector);
 }
 
@@ -148,9 +149,9 @@ _open_data_file(const gchar *filename)
 
   if (_is_relative_path(filename))
     {
-      gchar *completed_filename = _complete_relative_path_with_config_path(filename);
-      f = fopen(completed_filename, "r");
-      g_free(completed_filename);
+      gchar *absolute_path = _complete_relative_path_with_config_path(filename);
+      f = fopen(absolute_path, "r");
+      g_free(absolute_path);
     }
   else
     {
@@ -165,6 +166,7 @@ static GArray *
 _parse_input_file(KVTagger *self, FILE *file)
 {
   GArray* nv_array = self->scanner->get_parsed_records(self->scanner, file);
+
   return nv_array;
 }
 
@@ -177,26 +179,26 @@ kvtagger_sort_array_by_key(GArray *array)
 static GHashTable *
 kvtagger_classify_array(const GArray *const record_array)
 {
-  GHashTable *selector_lookup_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
+  GHashTable *tag_record_store = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
 
   if (record_array->len > 0)
     {
       gsize range_start = 0;
-      database_record range_start_kv = g_array_index(record_array, database_record, 0);
+      tag_record range_start_tag = g_array_index(record_array, tag_record, 0);
 
       for (gsize i = 1; i < record_array->len; ++i)
         {
-          database_record current_record = g_array_index(record_array, database_record, i);
+          tag_record current_record = g_array_index(record_array, tag_record, i);
 
-          if (_kv_comparer(&range_start_kv, &current_record))
+          if (_kv_comparer(&range_start_tag, &current_record))
             {
               element_range *current_range = g_new(element_range, 1);
               current_range->offset = range_start;
               current_range->length = i - range_start;
 
-              g_hash_table_insert(selector_lookup_table, range_start_kv.selector, current_range);
+              g_hash_table_insert(tag_record_store, range_start_tag.selector, current_range);
 
-              range_start_kv = current_record;
+              range_start_tag = current_record;
               range_start = i;
             }
         }
@@ -205,11 +207,11 @@ kvtagger_classify_array(const GArray *const record_array)
         element_range *last_range = g_new(element_range, 1);
         last_range->offset = range_start;
         last_range->length = record_array->len - range_start;
-        g_hash_table_insert(selector_lookup_table, range_start_kv.selector, last_range);
+        g_hash_table_insert(tag_record_store, range_start_tag.selector, last_range);
       }
     }
 
-  return selector_lookup_table;
+  return tag_record_store;
 }
 
 static gboolean
@@ -224,7 +226,7 @@ _prepare_scanner(KVTagger *self)
         {
 
           GlobalConfig *cfg = log_pipe_get_config(&self->super.super);
-          self->scanner = (TaggerScanner *) csv_tagger_scanner_new(cfg);
+          self->scanner = (TagRecordScanner *) csv_tagger_scanner_new(cfg);
         }
       else
         {
@@ -263,7 +265,7 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
       return FALSE;
     }
   kvtagger_sort_array_by_key(self->nv_array);
-  self->selector_lookup_table = kvtagger_classify_array(self->nv_array);
+  self->tag_record_store = kvtagger_classify_array(self->nv_array);
 
   return TRUE;
 }
@@ -284,7 +286,7 @@ kvtagger_parser_deinit(LogPipe *s)
 {
   KVTagger *self = (KVTagger *)s;
 
-  g_hash_table_unref(self->selector_lookup_table);
+  g_hash_table_unref(self->tag_record_store);
   g_array_unref(self->nv_array);
 
   return TRUE;

@@ -20,21 +20,26 @@
  *
  */
 
-#ifndef CSV_TAGGER_SCANNER_H_INCLUDED
-#define CSV_TAGGER_SCANNER_H_INCLUDED
+#ifndef TAGGER_SCANNER_H_INCLUDED
+#define TAGGER_SCANNER_H_INCLUDED
 
-#include "tagger-scanner.h"
-#include "scanner/csv-scanner/csv-scanner.h"
+#include <syslog-ng.h>
+#include <stdio.h>
 
-typedef struct _CSVTaggerScanner
+
+typedef struct tag_record
 {
-    TaggerScanner super;
-    CSVScanner scanner;
-    CSVScannerOptions options;
-    database_record last_record;
+  gchar *selector;
+  gchar *name;
+  gchar *value;
+} tag_record;
 
-} CSVTaggerScanner;
+typedef struct _TagRecordScanner TagRecordScanner;
 
-CSVTaggerScanner* csv_tagger_scanner_new(); 
+struct _TagRecordScanner
+{
+    GArray* (*get_parsed_records)(TagRecordScanner *self, FILE* file);
+};
+
 
 #endif
