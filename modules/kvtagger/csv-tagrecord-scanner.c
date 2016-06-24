@@ -20,39 +20,45 @@
  *
  */
 
-#include "csv-tagger-scanner.h"
+#include "csv-tagrecord-scanner.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "string-list.h"
 
 
 gboolean
-_get_next_record(CSVTaggerScanner *self, gchar *input, database_record *last_record)
+_get_next_record(CSVTagRecordScanner *self, gchar *input, tag_record *next_record)
 {
   csv_scanner_input(&self->scanner, input);
   if (!csv_scanner_scan_next(&self->scanner))
+    {
       return FALSE;
-  last_record->selector = csv_scanner_dup_current_value(&self->scanner);
+    }
+  next_record->selector = csv_scanner_dup_current_value(&self->scanner);
   if (!csv_scanner_scan_next(&self->scanner))
+    {
       return FALSE;
-  last_record->name = csv_scanner_dup_current_value(&self->scanner);
+    }
+  next_record->name = csv_scanner_dup_current_value(&self->scanner);
   if (!csv_scanner_scan_next(&self->scanner))
+    {
       return FALSE;
-  last_record->value = csv_scanner_dup_current_value(&self->scanner);
+    }
+  next_record->value = csv_scanner_dup_current_value(&self->scanner);
 
   return TRUE;
 }
 
-static GArray* csv_tagger_scanner_get_parsed_records(TaggerScanner *s, FILE *file)
+static GArray* csv_tagger_scanner_get_parsed_records(TagRecordScanner *s, FILE *file)
 {
-  CSVTaggerScanner *self = (CSVTaggerScanner *) s;
+  CSVTagRecordScanner *self = (CSVTagRecordScanner *) s;
   gchar line[3072];
-  database_record last_record;
-  GArray *nv_array = g_array_new(FALSE, FALSE, sizeof(database_record));
+  tag_record next_record;
+  GArray *nv_array = g_array_new(FALSE, FALSE, sizeof(tag_record));
   while(fgets(line, 3072, file))
     {
-      if (_get_next_record(self, line, &last_record))
+      if (_get_next_record(self, line, &next_record))
         {
-          g_array_append_val(nv_array, last_record);
+          g_array_append_val(nv_array, next_record);
         }
       else
         {
@@ -63,10 +69,10 @@ static GArray* csv_tagger_scanner_get_parsed_records(TaggerScanner *s, FILE *fil
   return nv_array;
 }
 
-CSVTaggerScanner*
+CSVTagRecordScanner*
 csv_tagger_scanner_new()
 {
-  CSVTaggerScanner *self = g_new0(CSVTaggerScanner, 1);
+  CSVTagRecordScanner *self = g_new0(CSVTagRecordScanner, 1);
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
   const gchar *column_array[] = {"selector", "name", "value", NULL};

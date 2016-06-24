@@ -27,18 +27,18 @@
 #include <stdio.h>
 
 
-typedef struct database_record
+typedef struct tag_record
 {
   gchar *selector;
   gchar *name;
   gchar *value;
-} database_record;
+} tag_record;
 
-typedef struct _TaggerScanner TaggerScanner;
+typedef struct _TagRecordScanner TagRecordScanner;
 
-struct _TaggerScanner
+struct _TagRecordScanner
 {
-    GArray* (*get_parsed_records)(TaggerScanner *self, FILE* file);
+    GArray* (*get_parsed_records)(TagRecordScanner *self, FILE* file);
 };
 
 
