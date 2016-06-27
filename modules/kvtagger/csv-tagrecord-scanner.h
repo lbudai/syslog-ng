@@ -23,7 +23,7 @@
 #ifndef CSV_TAGGER_SCANNER_H_INCLUDED
 #define CSV_TAGGER_SCANNER_H_INCLUDED
 
-#include "tagger-scanner.h"
+#include "tagrecord-scanner.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 
 typedef struct _CSVTagRecordScanner

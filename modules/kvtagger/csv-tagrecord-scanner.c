@@ -20,7 +20,7 @@
  *
  */
 
-#include "csv-tagger-scanner.h"
+#include "csv-tagrecord-scanner.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "string-list.h"
 

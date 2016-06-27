@@ -21,13 +21,13 @@
  *
  */
 
-#include "csv-tagger-scanner.h"
+#include "csv-tagrecord-scanner.h"
 #include "kvtagger.h"
 #include "logmsg/logmsg.h"
 #include "logpipe.h"
 #include "parser/parser-expr.h"
 #include "reloc.h"
-#include "tagger-scanner.h"
+#include "tagrecord-scanner.h"
 #include "template/templates.h"
 
 #include <stdio.h>
