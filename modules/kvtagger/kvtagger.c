@@ -39,15 +39,34 @@ typedef struct element_range
   gsize length;
 } element_range;
 
+typedef struct KVTagDB
+{
+  GArray *nv_array;
+  GHashTable *tag_record_store;
+} KVTagDB;
+
 typedef struct KVTagger
 {
   LogParser super;
-  GArray *nv_array;
-  GHashTable *tag_record_store;
+  KVTagDB tagdb;
   LogTemplate *selector_template;
   gchar *filename;
   TagRecordScanner *scanner;
 } KVTagger;
+
+static KVTagDB
+kvtagdb_ref(KVTagDB *s)
+{
+  return (KVTagDB){.nv_array = g_array_ref(s->nv_array),
+                        .tag_record_store = g_hash_table_ref(s->tag_record_store)};
+}
+
+static void
+kvtagdb_unref(KVTagDB *s)
+{
+  g_array_unref(s->nv_array);
+  g_hash_table_unref(s->tag_record_store);
+}
 
 void
 kvtagger_set_filename(LogParser *p, const gchar *filename)
@@ -69,7 +88,7 @@ kvtagger_set_database_selector_template(LogParser *p, const gchar *selector)
 static inline element_range const *
 kvtagger_lookup_tag(KVTagger *const self, const gchar *const key)
 {
-  return g_hash_table_lookup(self->tag_record_store, key);
+  return g_hash_table_lookup(self->tagdb.tag_record_store, key);
 }
 
 static gboolean
@@ -91,7 +110,7 @@ kvtagger_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *p
            i < position_of_tags_to_be_inserted->offset + position_of_tags_to_be_inserted->length;
            ++i)
         {
-          tag_record matching_tag = g_array_index(self->nv_array, tag_record, i);
+          tag_record matching_tag = g_array_index(self->tagdb.nv_array, tag_record, i);
           log_msg_set_value_by_name(msg, matching_tag.name, matching_tag.value, -1);
         }
     }
@@ -106,8 +125,7 @@ kvtagger_parser_clone(LogPipe *s)
   KVTagger *cloned = (KVTagger *)kvtagger_parser_new(s->cfg);
 
   cloned->super.template = log_template_ref(self->super.template);
-  cloned->nv_array = g_array_ref(self->nv_array);
-  cloned->tag_record_store = g_hash_table_ref(self->tag_record_store);
+  cloned->tagdb = kvtagdb_ref(&self->tagdb);
 
   return &cloned->super.super;
 }
@@ -160,7 +178,6 @@ _open_data_file(const gchar *filename)
 
   return f;
 }
-
 
 static GArray *
 _parse_input_file(KVTagger *self, FILE *file)
@@ -256,38 +273,90 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
       return FALSE;
     }
 
-  self->nv_array = _parse_input_file(self, f);
+  self->tagdb.nv_array = _parse_input_file(self, f);
 
   fclose(f);
-  if (!self->nv_array)
+  if (!self->tagdb.nv_array)
     {
       msg_error("Error while parsing kvtagger database");
       return FALSE;
     }
-  kvtagger_sort_array_by_key(self->nv_array);
-  self->tag_record_store = kvtagger_classify_array(self->nv_array);
+  kvtagger_sort_array_by_key(self->tagdb.nv_array);
+  self->tagdb.tag_record_store = kvtagger_classify_array(self->tagdb.nv_array);
 
   return TRUE;
+}
+
+static const gchar *
+_format_persist_name(const KVTagger *self)
+{
+  static gchar persist_name[256];
+
+  g_snprintf(persist_name, sizeof(persist_name), "kvtagger(%s)", self->filename);
+  return persist_name;
+}
+
+static gboolean
+_restore_kvtagdb_from_globalconfig(KVTagger *self, GlobalConfig *cfg)
+{
+  KVTagDB *restored_kvtagdb =
+      (KVTagDB *)cfg_persist_config_fetch(cfg, _format_persist_name(self));
+
+  if (restored_kvtagdb)
+    {
+      self->tagdb.nv_array = restored_kvtagdb->nv_array;
+      self->tagdb.tag_record_store = restored_kvtagdb->tag_record_store;
+      return TRUE;
+    }
+  else
+    {
+      return FALSE;
+    }
 }
 
 static gboolean
 kvtagger_parser_init(LogPipe *s)
 {
   KVTagger *self = (KVTagger *)s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
 
   if (self->filename == NULL)
     return FALSE;
 
-  return kvtagger_create_lookup_table_from_file(self) && log_parser_init_method(s);
+  if (!kvtagger_create_lookup_table_from_file(self))
+    {
+      msg_error("Failed to load the database file, finding cached database...");
+
+      if (_restore_kvtagdb_from_globalconfig(self, cfg))
+        {
+          msg_warning("Cached database found, falling back...");
+        }
+      else
+        {
+          msg_error("No cached database found, kvtagger initialization failed.");
+          return FALSE;
+        }
+    }
+
+  return log_parser_init_method(s);
+}
+
+static void
+_save_kvtagdb_to_globalconfig(KVTagger *self, GlobalConfig *cfg)
+{
+  KVTagDB *tagdb_shallow_copy = g_new0(KVTagDB, 1);
+  *tagdb_shallow_copy = kvtagdb_ref(&self->tagdb);
+
+  cfg_persist_config_add(cfg, _format_persist_name(self), tagdb_shallow_copy, kvtagdb_unref, FALSE);
 }
 
 static gboolean
 kvtagger_parser_deinit(LogPipe *s)
 {
   KVTagger *self = (KVTagger *)s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
 
-  g_hash_table_unref(self->tag_record_store);
-  g_array_unref(self->nv_array);
+  _save_kvtagdb_to_globalconfig(self, cfg);
 
   return TRUE;
 }
