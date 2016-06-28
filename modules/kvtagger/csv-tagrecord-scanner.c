@@ -23,6 +23,7 @@
 #include "csv-tagrecord-scanner.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "string-list.h"
+#include <string.h>
 
 
 gboolean
@@ -56,6 +57,8 @@ static GArray* csv_tagger_scanner_get_parsed_records(TagRecordScanner *s, FILE *
   GArray *nv_array = g_array_new(FALSE, FALSE, sizeof(tag_record));
   while(fgets(line, 3072, file))
     {
+      size_t line_length = strlen(line) - 1;
+      line[line_length] = '\0';
       if (_get_next_record(self, line, &next_record))
         {
           g_array_append_val(nv_array, next_record);
