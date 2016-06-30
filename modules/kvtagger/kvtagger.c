@@ -41,7 +41,7 @@ typedef struct element_range
 
 typedef struct KVTagDB
 {
-  GArray *nv_array;
+  GArray *data;
   GHashTable *tag_record_store;
 } KVTagDB;
 
@@ -57,14 +57,14 @@ typedef struct KVTagger
 static KVTagDB
 kvtagdb_ref(KVTagDB *s)
 {
-  return (KVTagDB){.nv_array = g_array_ref(s->nv_array),
+  return (KVTagDB){.data = g_array_ref(s->data),
                         .tag_record_store = g_hash_table_ref(s->tag_record_store)};
 }
 
 static void
 kvtagdb_unref(KVTagDB *s)
 {
-  g_array_unref(s->nv_array);
+  g_array_unref(s->data);
   g_hash_table_unref(s->tag_record_store);
 }
 
@@ -110,7 +110,7 @@ kvtagger_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *p
            i < position_of_tags_to_be_inserted->offset + position_of_tags_to_be_inserted->length;
            ++i)
         {
-          tag_record matching_tag = g_array_index(self->tagdb.nv_array, tag_record, i);
+          tag_record matching_tag = g_array_index(self->tagdb.data, tag_record, i);
           log_msg_set_value_by_name(msg, matching_tag.name, matching_tag.value, -1);
         }
     }
@@ -182,9 +182,9 @@ _open_data_file(const gchar *filename)
 static GArray *
 _parse_input_file(KVTagger *self, FILE *file)
 {
-  GArray* nv_array = self->scanner->get_parsed_records(self->scanner, file);
+  GArray* data = self->scanner->get_parsed_records(self->scanner, file);
 
-  return nv_array;
+  return data;
 }
 
 static void
@@ -273,16 +273,16 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
       return FALSE;
     }
 
-  self->tagdb.nv_array = _parse_input_file(self, f);
+  self->tagdb.data = _parse_input_file(self, f);
 
   fclose(f);
-  if (!self->tagdb.nv_array)
+  if (!self->tagdb.data)
     {
       msg_error("Error while parsing kvtagger database");
       return FALSE;
     }
-  kvtagger_sort_array_by_key(self->tagdb.nv_array);
-  self->tagdb.tag_record_store = kvtagger_classify_array(self->tagdb.nv_array);
+  kvtagger_sort_array_by_key(self->tagdb.data);
+  self->tagdb.tag_record_store = kvtagger_classify_array(self->tagdb.data);
 
   return TRUE;
 }
@@ -304,7 +304,7 @@ _restore_kvtagdb_from_globalconfig(KVTagger *self, GlobalConfig *cfg)
 
   if (restored_kvtagdb)
     {
-      self->tagdb.nv_array = restored_kvtagdb->nv_array;
+      self->tagdb.data = restored_kvtagdb->data;
       self->tagdb.tag_record_store = restored_kvtagdb->tag_record_store;
       return TRUE;
     }
