@@ -38,8 +38,7 @@ typedef struct _TagRecordScanner TagRecordScanner;
 
 struct _TagRecordScanner
 {
-    GArray* (*get_parsed_records)(TagRecordScanner *self, FILE* file);
+    GArray* (*get_parsed_records)(TagRecordScanner *self, const gchar *name_prefix, FILE* file);
 };
-
 
 #endif

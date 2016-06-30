@@ -25,9 +25,14 @@
 #include "string-list.h"
 #include <string.h>
 
+static gchar*
+_csv_scanner_dup_current_value_with_prefix(CSVScanner *scanner, const gchar *prefix)
+{
+  return g_strdup_printf("%s.%s", prefix, csv_scanner_get_current_value(scanner));
+}
 
 gboolean
-_get_next_record(CSVTagRecordScanner *self, gchar *input, tag_record *next_record)
+_get_next_record(CSVTagRecordScanner *self, gchar *input, tag_record *next_record, const gchar *name_prefix)
 {
   csv_scanner_input(&self->scanner, input);
   if (!csv_scanner_scan_next(&self->scanner))
@@ -39,7 +44,15 @@ _get_next_record(CSVTagRecordScanner *self, gchar *input, tag_record *next_recor
     {
       return FALSE;
     }
-  next_record->name = csv_scanner_dup_current_value(&self->scanner);
+
+  if (name_prefix)
+    {
+       next_record->name = _csv_scanner_dup_current_value_with_prefix(&self->scanner, name_prefix);
+    }
+  else
+    {
+       next_record->name = csv_scanner_dup_current_value(&self->scanner);
+    }
   if (!csv_scanner_scan_next(&self->scanner))
     {
       return FALSE;
@@ -49,7 +62,7 @@ _get_next_record(CSVTagRecordScanner *self, gchar *input, tag_record *next_recor
   return TRUE;
 }
 
-static GArray* csv_tagger_scanner_get_parsed_records(TagRecordScanner *s, FILE *file)
+static GArray* csv_tagger_scanner_get_parsed_records(TagRecordScanner *s, const gchar *name_prefix, FILE *file)
 {
   CSVTagRecordScanner *self = (CSVTagRecordScanner *) s;
   gchar line[3072];
@@ -59,7 +72,7 @@ static GArray* csv_tagger_scanner_get_parsed_records(TagRecordScanner *s, FILE *
     {
       size_t line_length = strlen(line) - 1;
       line[line_length] = '\0';
-      if (_get_next_record(self, line, &next_record))
+      if (_get_next_record(self, line, &next_record, name_prefix))
         {
           g_array_append_val(nv_array, next_record);
         }
