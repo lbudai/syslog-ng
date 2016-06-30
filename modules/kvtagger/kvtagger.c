@@ -42,7 +42,7 @@ typedef struct element_range
 typedef struct KVTagDB
 {
   GArray *data;
-  GHashTable *tag_record_store;
+  GHashTable *index;
 } KVTagDB;
 
 typedef struct KVTagger
@@ -58,14 +58,14 @@ static KVTagDB
 kvtagdb_ref(KVTagDB *s)
 {
   return (KVTagDB){.data = g_array_ref(s->data),
-                        .tag_record_store = g_hash_table_ref(s->tag_record_store)};
+                        .index = g_hash_table_ref(s->index)};
 }
 
 static void
 kvtagdb_unref(KVTagDB *s)
 {
   g_array_unref(s->data);
-  g_hash_table_unref(s->tag_record_store);
+  g_hash_table_unref(s->index);
 }
 
 void
@@ -88,7 +88,7 @@ kvtagger_set_database_selector_template(LogParser *p, const gchar *selector)
 static inline element_range const *
 kvtagger_lookup_tag(KVTagger *const self, const gchar *const key)
 {
-  return g_hash_table_lookup(self->tagdb.tag_record_store, key);
+  return g_hash_table_lookup(self->tagdb.index, key);
 }
 
 static gboolean
@@ -196,7 +196,7 @@ kvtagger_sort_array_by_key(GArray *array)
 static GHashTable *
 kvtagger_classify_array(const GArray *const record_array)
 {
-  GHashTable *tag_record_store = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
+  GHashTable *index = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
 
   if (record_array->len > 0)
     {
@@ -213,7 +213,7 @@ kvtagger_classify_array(const GArray *const record_array)
               current_range->offset = range_start;
               current_range->length = i - range_start;
 
-              g_hash_table_insert(tag_record_store, range_start_tag.selector, current_range);
+              g_hash_table_insert(index, range_start_tag.selector, current_range);
 
               range_start_tag = current_record;
               range_start = i;
@@ -224,11 +224,11 @@ kvtagger_classify_array(const GArray *const record_array)
         element_range *last_range = g_new(element_range, 1);
         last_range->offset = range_start;
         last_range->length = record_array->len - range_start;
-        g_hash_table_insert(tag_record_store, range_start_tag.selector, last_range);
+        g_hash_table_insert(index, range_start_tag.selector, last_range);
       }
     }
 
-  return tag_record_store;
+  return index;
 }
 
 static gboolean
@@ -282,7 +282,7 @@ kvtagger_create_lookup_table_from_file(KVTagger *self)
       return FALSE;
     }
   kvtagger_sort_array_by_key(self->tagdb.data);
-  self->tagdb.tag_record_store = kvtagger_classify_array(self->tagdb.data);
+  self->tagdb.index = kvtagger_classify_array(self->tagdb.data);
 
   return TRUE;
 }
@@ -305,7 +305,7 @@ _restore_kvtagdb_from_globalconfig(KVTagger *self, GlobalConfig *cfg)
   if (restored_kvtagdb)
     {
       self->tagdb.data = restored_kvtagdb->data;
-      self->tagdb.tag_record_store = restored_kvtagdb->tag_record_store;
+      self->tagdb.index = restored_kvtagdb->index;
       return TRUE;
     }
   else
