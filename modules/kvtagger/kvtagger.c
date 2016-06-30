@@ -21,8 +21,8 @@
  *
  */
 
-#include "csv-tagrecord-scanner.h"
 #include "kvtagger.h"
+#include "csv-tagrecord-scanner.h"
 #include "logmsg/logmsg.h"
 #include "logpipe.h"
 #include "parser/parser-expr.h"
@@ -57,8 +57,7 @@ typedef struct KVTagger
 static KVTagDB
 kvtagdb_ref(KVTagDB *s)
 {
-  return (KVTagDB){.data = g_array_ref(s->data),
-                        .index = g_hash_table_ref(s->index)};
+  return (KVTagDB){.data = g_array_ref(s->data), .index = g_hash_table_ref(s->index)};
 }
 
 static void
@@ -143,8 +142,8 @@ kvtagger_parser_free(LogPipe *s)
 static gint
 _kv_comparer(gconstpointer k1, gconstpointer k2)
 {
-  tag_record* r1 = (tag_record *) k1;
-  tag_record* r2 = (tag_record *) k2;
+  tag_record *r1 = (tag_record *)k1;
+  tag_record *r2 = (tag_record *)k2;
   return strcmp(r1->selector, r2->selector);
 }
 
@@ -182,7 +181,7 @@ _open_data_file(const gchar *filename)
 static GArray *
 _parse_input_file(KVTagger *self, FILE *file)
 {
-  GArray* data = self->scanner->get_parsed_records(self->scanner, file);
+  GArray *data = self->scanner->get_parsed_records(self->scanner, file);
 
   return data;
 }
@@ -238,23 +237,23 @@ _prepare_scanner(KVTagger *self)
   if (filename_len >= 3)
     {
       gsize diff = filename_len - 3;
-      const gchar* extension = self->filename+diff;
+      const gchar *extension = self->filename + diff;
       if (strcmp(extension, "csv") == 0)
         {
 
           GlobalConfig *cfg = log_pipe_get_config(&self->super.super);
-          self->scanner = (TagRecordScanner *) csv_tagger_scanner_new(cfg);
+          self->scanner = (TagRecordScanner *)csv_tagger_scanner_new(cfg);
         }
       else
         {
-            return FALSE;
+          return FALSE;
         }
     }
   else
     {
       return FALSE;
     }
-   return TRUE;
+  return TRUE;
 }
 
 static gboolean
@@ -299,8 +298,7 @@ _format_persist_name(const KVTagger *self)
 static gboolean
 _restore_kvtagdb_from_globalconfig(KVTagger *self, GlobalConfig *cfg)
 {
-  KVTagDB *restored_kvtagdb =
-      (KVTagDB *)cfg_persist_config_fetch(cfg, _format_persist_name(self));
+  KVTagDB *restored_kvtagdb = (KVTagDB *)cfg_persist_config_fetch(cfg, _format_persist_name(self));
 
   if (restored_kvtagdb)
     {
