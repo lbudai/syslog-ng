@@ -2,6 +2,9 @@ module_LTLIBRARIES				+= modules/kvtagger/libkvtagger.la
 modules_kvtagger_libkvtagger_la_SOURCES	=	\
 	modules/kvtagger/kvtagger.c			\
 	modules/kvtagger/kvtagger.h			\
+	modules/kvtagger/csv-tagger-scanner.c			\
+	modules/kvtagger/csv-tagger-scanner.h			\
+	modules/kvtagger/tagger-scanner.h			\
 	modules/kvtagger/kvtagger-grammar.y		\
 	modules/kvtagger/kvtagger-parser.c		\
 	modules/kvtagger/kvtagger-parser.h		\

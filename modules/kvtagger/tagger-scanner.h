@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2015 Balabit
- * Copyright (c) 1998-2015 Balázs Scheidler
+ * Copyright (c) 2016 Balabit
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -21,17 +20,26 @@
  *
  */
 
-#ifndef KVTAGGER_H_INCLUDED
-#define KVTAGGER_H_INCLUDED
+#ifndef TAGGER_SCANNER_H_INCLUDED
+#define TAGGER_SCANNER_H_INCLUDED
 
-#include "parser/parser-expr.h"
-#include "syslog-ng.h"
-#include "template/common-template-typedefs.h"
+#include <syslog-ng.h>
+#include <stdio.h>
 
-LogParser *kvtagger_parser_new(GlobalConfig *cfg);
 
-LogTemplateOptions * kvtagger_get_template_options(LogParser *d);
-void kvtagger_set_database_key_template(LogParser *p, const gchar *key);
-void kvtagger_set_filename(LogParser *p, const gchar * filename);
+typedef struct database_record
+{
+  gchar *selector;
+  gchar *name;
+  gchar *value;
+} database_record;
+
+typedef struct _TaggerScanner TaggerScanner;
+
+struct _TaggerScanner
+{
+    GArray* (*get_parsed_records)(TaggerScanner *self, FILE* file);
+};
+
 
 #endif

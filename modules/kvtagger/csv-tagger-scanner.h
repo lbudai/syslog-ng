@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2015 Balabit
- * Copyright (c) 1998-2015 Balázs Scheidler
+ * Copyright (c) 2016 Balabit
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -21,17 +20,21 @@
  *
  */
 
-#ifndef KVTAGGER_H_INCLUDED
-#define KVTAGGER_H_INCLUDED
+#ifndef CSV_TAGGER_SCANNER_H_INCLUDED
+#define CSV_TAGGER_SCANNER_H_INCLUDED
 
-#include "parser/parser-expr.h"
-#include "syslog-ng.h"
-#include "template/common-template-typedefs.h"
+#include "tagger-scanner.h"
+#include "scanner/csv-scanner/csv-scanner.h"
 
-LogParser *kvtagger_parser_new(GlobalConfig *cfg);
+typedef struct _CSVTaggerScanner
+{
+    TaggerScanner super;
+    CSVScanner scanner;
+    CSVScannerOptions options;
+    database_record last_record;
 
-LogTemplateOptions * kvtagger_get_template_options(LogParser *d);
-void kvtagger_set_database_key_template(LogParser *p, const gchar *key);
-void kvtagger_set_filename(LogParser *p, const gchar * filename);
+} CSVTaggerScanner;
+
+CSVTaggerScanner* csv_tagger_scanner_new(); 
 
 #endif
