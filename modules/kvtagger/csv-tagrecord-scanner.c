@@ -57,6 +57,13 @@ _store_next_record_without_prefix(TagRecordScanner *record_scanner, gchar **lval
 }
 
 static gboolean
+_is_three_value_in_line(CSVScanner *line_scanner)
+{
+  csv_scanner_scan_next(line_scanner);
+  return csv_scanner_is_scan_finished(line_scanner);
+}
+
+static gboolean
 _get_next_record(TagRecordScanner *s, const gchar *input, TagRecord *next_record)
 {
   CSVScanner *line_scanner = (CSVScanner *) s->scanner;
@@ -71,7 +78,7 @@ _get_next_record(TagRecordScanner *s, const gchar *input, TagRecord *next_record
   if (!_store_next_record_without_prefix(s, &next_record->value))
     return FALSE;
 
-  return TRUE;
+  return _is_three_value_in_line(line_scanner);
 }
 
 const TagRecord*
@@ -100,7 +107,7 @@ csv_tag_record_scanner_new()
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
   const gchar *column_array[] = {"selector", "name", "value", NULL};
   csv_scanner_options_set_columns(&self->options, string_array_to_list(column_array));
-  csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
+  csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE | CSV_SCANNER_DROP_INVALID);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
   csv_scanner_state_init(&self->scanner, &self->options);
   self->super.scanner = &self->scanner;
