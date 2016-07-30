@@ -156,7 +156,7 @@ Architecture: linux-any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: systemd
-Replaces: syslog-ng-core (<= 3.8.0)
+Replaces: syslog-ng-core (<= 3.6.1+git20141206-g4d90138-2)
 Description: Enhanced system logging daemon (systemd journal plugin)
  syslog-ng is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
