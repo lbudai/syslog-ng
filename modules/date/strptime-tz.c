@@ -513,7 +513,9 @@ literal:
                                                  NULL, 2);
                                 if (ep != NULL) {
 					tm->tm_isdst = i;
+					#ifdef SYSLOG_NG_HAVE_TIMEZONE
 					*tm_gmtoff = -(timezone);
+					#endif
 					*tm_zone = tzname[i];
 				}
 				bp = ep;
