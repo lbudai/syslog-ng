@@ -108,7 +108,7 @@ _is_delimiter(const gchar *cur)
   return (*cur == ' ') || (strncmp(cur, ", ", 2) == 0);
 }
 
-static void 
+static void
 _on_kv_quote_initial(KVScannerSimple *self, const gchar *cur)
 {
   if (_is_delimiter(cur))
