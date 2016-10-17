@@ -382,7 +382,12 @@ cfg_load_candidate_modules(GlobalConfig *self)
     {
       plugin_load_candidate_modules(self);
     }
-  plugin_load_module("license", self, NULL);
+
+  if (!plugin_load_module("license", self, NULL))
+    {
+      msg_error("Error loading the license module, forcing exit");
+      exit(1);
+    }
 }
 
 static void
