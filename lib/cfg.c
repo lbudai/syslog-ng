@@ -382,6 +382,7 @@ cfg_load_candidate_modules(GlobalConfig *self)
     {
       plugin_load_candidate_modules(self);
     }
+  plugin_load_module("license", self, NULL);
 }
 
 static void
