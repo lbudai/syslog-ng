@@ -4,6 +4,7 @@
 #include "cfg.h"
 #include "apphook.h"
 #include <criterion/criterion.h>
+#include <unistd.h>
 
 static LogMessage*
 _create_log_msg(const gchar *message, const gchar *host)
@@ -21,7 +22,7 @@ Test(add_contextual_data_template_selector, test_given_empty_selector_when_resol
   AddContextualDataSelector *selector = NULL;
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
 
-  cr_assert_eq(add_contextual_data_selector_resolve(selector, msg), NULL, "When selector is NULL the resolve should return NULL.");
+  cr_assert_null(add_contextual_data_selector_resolve(selector, msg), "When selector is NULL the resolve should return NULL.");
   log_msg_unref(msg);
 }
 
@@ -39,10 +40,21 @@ Test(add_contextual_data_template_selector, test_given_template_selector_when_re
 {
   AddContextualDataSelector *selector = _create_template_selector("$HOST");
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
-  gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
+  GList *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "localhost", "");
-  g_free(resolved_selector);
+  cr_assert_str_eq(resolved_selector->data, "localhost", "");
+  g_list_free(resolved_selector);
+  log_msg_unref(msg);
+  add_contextual_data_selector_free(selector);
+}
+
+Test(add_contextual_data_template_selector, test_template_selector_cannot_be_resolved)
+{
+  AddContextualDataSelector *selector = _create_template_selector("$PROGRAM");
+  LogMessage *msg = _create_log_msg("testmsg", "localhost");
+  GList *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
+
+  cr_assert_str_eq(resolved_selector->data, "", "No template should be resolved.");
   log_msg_unref(msg);
   add_contextual_data_selector_free(selector);
 }

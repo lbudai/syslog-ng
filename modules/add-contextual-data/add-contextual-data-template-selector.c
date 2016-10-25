@@ -49,7 +49,7 @@ _compile_selector_template(AddContextualDataTemplateSelector *self)
                 evt_tag_str("error", error->message));
       return FALSE;
     }
- 
+
   return TRUE;
 }
 
@@ -67,16 +67,18 @@ _init(AddContextualDataSelector *s)
   return _compile_selector_template(self);
 }
 
-static gchar*
+static GList*
 _resolve(AddContextualDataSelector *s, LogMessage *msg)
 {
-  GString *selector_str = g_string_new(NULL);  
+  GString *selector_str = g_string_new(NULL);
   AddContextualDataTemplateSelector *self = (AddContextualDataTemplateSelector *)s;
 
   log_template_format(self->selector_template, msg, NULL, LTZ_LOCAL, 0, NULL,
                         selector_str);
 
-  return g_string_free(selector_str, FALSE);
+   GList *resolved_template = NULL;
+   resolved_template = g_list_append(resolved_template, g_string_free(selector_str, FALSE));
+   return resolved_template;
 }
 
 static void
