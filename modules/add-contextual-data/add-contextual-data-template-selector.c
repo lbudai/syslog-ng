@@ -67,18 +67,18 @@ _init(AddContextualDataSelector *s)
   return _compile_selector_template(self);
 }
 
-static GList*
+static GList *
 _resolve(AddContextualDataSelector *s, LogMessage *msg)
 {
   GString *selector_str = g_string_new(NULL);
   AddContextualDataTemplateSelector *self = (AddContextualDataTemplateSelector *)s;
 
   log_template_format(self->selector_template, msg, NULL, LTZ_LOCAL, 0, NULL,
-                        selector_str);
+                      selector_str);
 
-   GList *resolved_template = NULL;
-   resolved_template = g_list_append(resolved_template, g_string_free(selector_str, FALSE));
-   return resolved_template;
+  GList *resolved_template = NULL;
+  resolved_template = g_list_append(resolved_template, g_string_free(selector_str, FALSE));
+  return resolved_template;
 }
 
 static void
@@ -93,13 +93,14 @@ static AddContextualDataSelector *
 _clone(AddContextualDataSelector *s, GlobalConfig *cfg)
 {
   AddContextualDataTemplateSelector *self = (AddContextualDataTemplateSelector *)s;
-  AddContextualDataTemplateSelector *cloned = (AddContextualDataTemplateSelector *)add_contextual_data_template_selector_new(cfg, self->selector_template_string);
+  AddContextualDataTemplateSelector *cloned = (AddContextualDataTemplateSelector *)
+      add_contextual_data_template_selector_new(cfg, self->selector_template_string);
   _replace_template(&cloned->selector_template, self->selector_template);
 
   return &cloned->super;
 }
 
-AddContextualDataSelector*
+AddContextualDataSelector *
 add_contextual_data_template_selector_new(GlobalConfig *cfg, const gchar *selector_template_string)
 {
   AddContextualDataTemplateSelector *new_instance = g_new0(AddContextualDataTemplateSelector, 1);

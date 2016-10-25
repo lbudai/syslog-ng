@@ -73,7 +73,7 @@ add_contextual_data_set_prefix(LogParser *p, const gchar *prefix)
 }
 
 void
-add_contextual_data_set_database_default_selector(LogParser *p, const gchar * default_selector)
+add_contextual_data_set_database_default_selector(LogParser *p, const gchar *default_selector)
 {
   AddContextualData *self = (AddContextualData *) p;
 
@@ -85,7 +85,7 @@ void
 add_contextual_data_set_selector(LogParser *p, AddContextualDataSelector *selector)
 {
   AddContextualData *self = (AddContextualData *) p;
-  
+
   self->selector = selector;
 }
 
@@ -109,7 +109,7 @@ _process(LogParser *s, LogMessage **pmsg,
 {
   AddContextualData *self = (AddContextualData *) s;
   LogMessage *msg = log_msg_make_writable(pmsg, path_options);
-  gchar* resolved_selector = add_contextual_data_selector_resolve(self->selector, msg);
+  gchar *resolved_selector = add_contextual_data_selector_resolve(self->selector, msg);
   const gchar *selector = resolved_selector;
 
   if (!context_info_db_contains(self->context_info_db, selector) && _is_default_selector_set(self))
@@ -145,7 +145,7 @@ _clone(LogPipe *s)
   add_contextual_data_set_prefix(&cloned->super, self->prefix);
   add_contextual_data_set_filename(&cloned->super, self->filename);
   add_contextual_data_set_database_default_selector(&cloned->super,
-                                                    self->default_selector);
+      self->default_selector);
   self->selector = add_contextual_data_selector_clone(self->selector, s->cfg);
 
   return &cloned->super.super;

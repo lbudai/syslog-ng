@@ -6,7 +6,7 @@
 #include <criterion/criterion.h>
 #include <unistd.h>
 
-static LogMessage*
+static LogMessage *
 _create_log_msg(const gchar *message, const gchar *host)
 {
   LogMessage *msg = NULL;
@@ -22,11 +22,12 @@ Test(add_contextual_data_template_selector, test_given_empty_selector_when_resol
   AddContextualDataSelector *selector = NULL;
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
 
-  cr_assert_null(add_contextual_data_selector_resolve(selector, msg), "When selector is NULL the resolve should return NULL.");
+  cr_assert_null(add_contextual_data_selector_resolve(selector, msg),
+                 "When selector is NULL the resolve should return NULL.");
   log_msg_unref(msg);
 }
 
-static AddContextualDataSelector*
+static AddContextualDataSelector *
 _create_template_selector(const gchar *template_string)
 {
   GlobalConfig *cfg = cfg_new(VERSION_VALUE);
@@ -36,7 +37,8 @@ _create_template_selector(const gchar *template_string)
   return selector;
 }
 
-Test(add_contextual_data_template_selector, test_given_template_selector_when_resolve_then_result_is_the_formatted_template_value)
+Test(add_contextual_data_template_selector,
+     test_given_template_selector_when_resolve_then_result_is_the_formatted_template_value)
 {
   AddContextualDataSelector *selector = _create_template_selector("$HOST");
   LogMessage *msg = _create_log_msg("testmsg", "localhost");

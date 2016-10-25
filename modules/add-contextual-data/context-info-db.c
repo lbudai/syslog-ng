@@ -218,7 +218,7 @@ context_info_db_insert(ContextInfoDB *self,
   g_array_append_val(self->data, *record);
   self->is_data_indexed = FALSE;
   if (!g_list_find_custom(self->ordered_selectors, record->selector->str, _g_strcmp))
-      self->ordered_selectors = g_list_append(self->ordered_selectors, record->selector->str);
+    self->ordered_selectors = g_list_append(self->ordered_selectors, record->selector->str);
 }
 
 gboolean
