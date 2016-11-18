@@ -5,7 +5,6 @@ EXTRA_DIST		+= \
 		debian/syslog-ng-mod-kafka.install \
 		debian/syslog-ng-core.NEWS \
 		debian/syslog-ng-mod-curl.install \
-		debian/syslog-ng-mod-journal.install \
 		debian/syslog-ng-mod-elastic.install \
 		debian/syslog-ng-mod-mongodb.postinst \
 		debian/syslog-ng-mod-geoip.install \

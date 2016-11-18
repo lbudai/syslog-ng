@@ -2,6 +2,8 @@ Source: syslog-ng
 Section: admin
 Priority: extra
 Maintainer: Laszlo Budai <laszlo.budai@balabit.com>
+Uploaders: Laszlo Boszormenyi (GCS) <gcs@debian.org>,
+           SZALAY Attila <sasa@debian.org>
 Build-Depends: debhelper (>= 9~),
                dh-autoreconf,
                automake (>= 1:1.11.1),
@@ -42,8 +44,8 @@ Build-Depends: debhelper (>= 9~),
 Build-Conflicts: autoconf2.13
 Standards-Version: 3.9.6
 Homepage: http://www.syslog-ng.org/
-Vcs-Git: https://github.com/balabit/syslog-ng.git
-Vcs-Browser: https://github.com/balabit/syslog-ng
+Vcs-Git: git://anonscm.debian.org/syslog-ng/syslog-ng-debian.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=syslog-ng/syslog-ng-debian.git
 
 Package: syslog-ng
 Architecture: all
@@ -124,14 +126,14 @@ Description: Enhanced system logging daemon (development files)
 Package: syslog-ng-core
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-mod-journal [linux-any], util-linux (>= 2.12-10)
+Depends: ${shlibs:Depends}, ${misc:Depends}, util-linux (>= 2.12-10)
 Recommends: logrotate
 Suggests: ${sng:CoreModules}, ${sng:Modules}
 Provides: system-log-daemon, linux-kernel-log-daemon, libsyslog-ng-dev,
  syslog-ng-abi-${sng:ABI}
 Conflicts: system-log-daemon, linux-kernel-log-daemon
-Replaces: syslog-ng (<< 3.3.0~), libsyslog-ng-dev
-Breaks: syslog-ng (<< 3.3.0~), libsyslog-ng-dev
+Replaces: syslog-ng (<< 3.3.0~), libsyslog-ng-dev, syslog-ng-mod-journal
+Breaks: syslog-ng (<< 3.3.0~), libsyslog-ng-dev, syslog-ng-mod-journal
 Description: Enhanced system logging daemon (core)
  syslog-ng is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
@@ -150,31 +152,6 @@ Description: Enhanced system logging daemon (core)
  .
  This package provides the core syslog-ng, with all the plugins
  required for a standard installation.
-
-Package: syslog-ng-mod-journal
-Architecture: linux-any
-Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: systemd
-Replaces: syslog-ng-core (<= 3.6.1+git20141206-g4d90138-2)
-Description: Enhanced system logging daemon (systemd journal plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
- and output methods: syslog, unstructured text, message queues,
- databases (SQL and NoSQL alike) and more.
- .
- Key features:
- .
-  * receive and send RFC3164 and RFC5424 style syslog messages
-  * work with any kind of unstructured data
-  * receive and send JSON formatted messages
-  * classify and structure logs with builtin parsers (csv-parser(),
-    db-parser(), etc.)
-  * normalize, crunch and process logs as they flow through the system
-  * hand on messages for further processing using message queues (like
-    AMQP), files or databases (like PostgreSQL or MongoDB).
- .
- This package provides the systemd-journal() source plugin, which
- allows syslog-ng to read directly from the systemd Journal.
 
 Package: syslog-ng-mod-json
 Architecture: any
