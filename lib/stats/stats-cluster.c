@@ -22,6 +22,7 @@
  *
  */
 #include "stats/stats-cluster.h"
+#include "messages.h"
 
 #include <string.h>
 
@@ -164,6 +165,30 @@ stats_cluster_untrack_counter(StatsCluster *self, gint type, StatsCounterItem **
   *counter = NULL;
 }
 
+static gchar *
+_stats_build_query_key(StatsCluster *self)
+{
+  GString *key = g_string_new("");
+  gchar buffer[64] = {0};
+  const gchar *component_name = stats_cluster_get_component_name(self, buffer, sizeof(buffer));
+
+  msg_debug("build_key", evt_tag_str("component", component_name));
+  g_string_append(key, component_name);
+
+  if (self->id && self->id[0])
+    {
+      msg_debug("build_key", evt_tag_str("id", self->id));
+      g_string_append_printf(key, ".%s", self->id);
+    }
+  if (self->instance && self->instance[0])
+    {
+      msg_debug("build_key", evt_tag_str("instance", self->instance));
+      g_string_append_printf(key, ".%s", self->instance);
+    }
+
+  return g_string_free(key, FALSE);
+}
+
 StatsCluster *
 stats_cluster_new(gint component, const gchar *id, const gchar *instance)
 {
@@ -173,6 +198,7 @@ stats_cluster_new(gint component, const gchar *id, const gchar *instance)
   self->id = g_strdup(id ? : "");
   self->instance = g_strdup(instance ? : "");
   self->use_count = 0;
+  self->query_key = _stats_build_query_key(self);
   return self;
 }
 
@@ -181,5 +207,6 @@ stats_cluster_free(StatsCluster *self)
 {
   g_free(self->id);
   g_free(self->instance);
+  g_free(self->query_key);
   g_free(self);
 }

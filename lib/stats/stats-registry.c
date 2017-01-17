@@ -22,7 +22,7 @@
  *
  */
 #include "stats/stats-registry.h"
-
+#include "messages.h"
 #include <string.h>
 
 static GHashTable *counter_hash;
@@ -67,6 +67,9 @@ _grab_cluster(gint stats_level, gint component, const gchar *id, const gchar *in
       /* no such StatsCluster instance, register one */
       sc = stats_cluster_new(component, id, instance);
       sc->dynamic = dynamic;
+      msg_debug("stats", evt_tag_int("component", component),
+                evt_tag_str("id", id),
+                evt_tag_str("instance", instance));
       g_hash_table_insert(counter_hash, sc, sc);
     }
   else
@@ -282,3 +285,10 @@ stats_registry_deinit(void)
   counter_hash = NULL;
   g_static_mutex_free(&stats_mutex);
 }
+
+GHashTable *
+_get_counter_hash(void)
+{
+  return counter_hash;
+}
+
