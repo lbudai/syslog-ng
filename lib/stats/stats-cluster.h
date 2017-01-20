@@ -103,6 +103,7 @@ typedef struct _StatsCluster
   gchar *instance;
   guint16 live_mask;
   guint16 dynamic:1;
+  gchar *query_key;
 } StatsCluster;
 
 typedef void (*StatsForeachCounterFunc)(StatsCluster *sc, gint type, StatsCounterItem *counter, gpointer user_data);
