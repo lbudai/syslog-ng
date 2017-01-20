@@ -13,7 +13,8 @@ tests_unit_TESTS			= \
 	tests/unit/test_hostid		   \
 	tests/unit/test_zone		   \
 	tests/unit/test_pathutils	   \
-	tests/unit/test_logwriter
+	tests/unit/test_logwriter	\
+	tests/unit/test_stats_query
 
 check_PROGRAMS				+= \
 	${tests_unit_TESTS}
@@ -69,6 +70,10 @@ tests_unit_test_zone_LDADD		= \
 
 tests_unit_test_pathutils_CFLAGS	= $(TEST_CFLAGS)
 tests_unit_test_pathutils_LDADD	= \
+	$(TEST_LDADD) $(unit_test_extra_modules)
+
+tests_unit_test_stats_query_CFLAGS	= $(TEST_CFLAGS)
+tests_unit_test_stats_query_LDADD	= \
 	$(TEST_LDADD) $(unit_test_extra_modules)
 
 endif
