@@ -26,11 +26,15 @@
 
 #include "syslog-ng.h"
 #include "thread-utils.h"
+#include "cli.h"
 
 extern gchar *preprocess_into;
 extern gboolean syntax_only;
+extern gboolean command_line_mode;
+extern gchar **cli_var;
 extern gboolean __main_loop_is_terminating;
 extern ThreadId main_thread_handle;
+extern Cli *cli;
 
 typedef gpointer (*MainLoopTaskFunc)(gpointer user_data);
 
