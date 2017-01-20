@@ -97,6 +97,11 @@
 gchar *preprocess_into = NULL;
 gboolean syntax_only = FALSE;
 gboolean interactive_mode = FALSE;
+gboolean command_line_mode = FALSE;
+Cli *cli = NULL;
+
+/* possible command line configs */
+gchar **cli_var = NULL;
 
 /*
  * This variable is used to detect that syslog-ng is being terminated, in which
@@ -265,7 +270,8 @@ main_loop_reload_config_initiate(void)
   main_loop_old_config = current_configuration;
   app_pre_config_loaded();
   main_loop_new_config = cfg_new(0);
-  if (!cfg_read_config(main_loop_new_config, resolvedConfigurablePaths.cfgfilename, FALSE, NULL))
+  if (!cfg_open_config(main_loop_new_config, resolvedConfigurablePaths.cfgfilename)
+      || !cfg_read_config(main_loop_new_config, FALSE, NULL))
     {
       cfg_free(main_loop_new_config);
       main_loop_new_config = NULL;
@@ -434,6 +440,35 @@ main_loop_init(void)
   setup_signals();
 }
 
+static int
+_setup_cli_mode(GlobalConfig *global_config)
+{
+  if (!cli_setup_params(cli))
+    return 1;
+
+  cli_initialize_configuration(cli, global_config);
+
+  return 0;
+}
+
+static int
+_open_configuration_for_reading()
+{
+  if (cli->is_command_line_drivers)
+    {
+      int result = _setup_cli_mode(current_configuration);
+      if (result != 0)
+        {
+          return result;
+        }
+    }
+  else if (!cfg_open_config(current_configuration, resolvedConfigurablePaths.cfgfilename))
+    {
+      return 1;
+    }
+  return 0;
+}
+
 /*
  * Returns: exit code to be returned to the calling process, 0 on success.
  */
@@ -441,7 +476,12 @@ int
 main_loop_read_and_init_config(void)
 {
   current_configuration = cfg_new(0);
-  if (!cfg_read_config(current_configuration, resolvedConfigurablePaths.cfgfilename, syntax_only, preprocess_into))
+  int result = _open_configuration_for_reading();
+  if (result != 0)
+    return result;
+
+  /* same retval for the sake of backward-compatibility */
+  if (!cfg_read_config(current_configuration, syntax_only, preprocess_into))
     {
       return 1;
     }
@@ -507,6 +547,8 @@ static GOptionEntry main_loop_options[] =
   { "syntax-only",       's',         0, G_OPTION_ARG_NONE, &syntax_only, "Only read and parse config file", NULL},
   { "control",           'c',         0, G_OPTION_ARG_STRING, &resolvedConfigurablePaths.ctlfilename, "Set syslog-ng control socket, default=" PATH_CONTROL_SOCKET, "<ctlpath>" },
   { "interactive",       'i',         0, G_OPTION_ARG_NONE, &interactive_mode, "Enable interactive mode" },
+  { "cli",               'l',         0, G_OPTION_ARG_NONE, &command_line_mode, "Run as a command line tool" },
+  { G_OPTION_REMAINING,  0,           0, G_OPTION_ARG_STRING_ARRAY, &cli_var, NULL, NULL },
   { NULL },
 };
 

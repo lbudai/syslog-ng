@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2013 Balabit
- * Copyright (c) 1998-2013 Balázs Scheidler
+ * Copyright (c) 2016-2017 Noémi Ványi
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,28 +21,34 @@
  *
  */
 
-#ifndef TRANSPORT_TRANSPORT_FILE_H_INCLUDED
-#define TRANSPORT_TRANSPORT_FILE_H_INCLUDED 1
+#ifndef CLI_H_INCLUDED
+#define CLI_H_INCLUDED
 
-#include "transport/logtransport.h"
+#include "cfg.h"
 
-/* log transport that simply sends messages to an fd */
-typedef struct _LogTransportFile LogTransportFile;
-struct _LogTransportFile
+#include <glib.h>
+
+typedef struct _CliParam
 {
-  LogTransport super;
-};
+  gchar *name;
+  gchar *cfg;
+  gchar *type;
+} CliParam;
 
-void log_transport_file_init_instance(LogTransportFile *self, gint fd);
-LogTransport *log_transport_file_new(gint fd);
+CliParam *cli_param_new(gchar *type, gchar *cfg);
 
-typedef struct _LogTransportStdin LogTransportStdin;
-struct _LogTransportStdin
+typedef struct _Cli
 {
-  LogTransport super;
-  LogPipe *control;
-};
+  gchar **raw_params;
+  GList *params;
+  gboolean is_cli;
+  gboolean is_command_line_drivers;
+  gchar *generated_config;
+} Cli;
 
-LogTransport *log_transport_stdin_new(gint fd, LogPipe *control);
+Cli *cli_new(gchar **params, gboolean is_cli_param);
+gboolean cli_setup_params(Cli *cli);
+void cli_initialize_configuration(Cli *cli, GlobalConfig *global_config);
+gboolean cli_write_generated_config_to_file(Cli *cli, gchar* filename);
 
 #endif

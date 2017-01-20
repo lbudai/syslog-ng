@@ -64,6 +64,7 @@ static gboolean display_version = FALSE;
 static gboolean display_module_registry = FALSE;
 static gboolean dummy = FALSE;
 
+
 #ifdef YYDEBUG
 extern int cfg_parser_debug;
 #endif
@@ -247,7 +248,8 @@ main(int argc, char *argv[])
     }
 
   gboolean exit_before_main_loop_run = syntax_only || preprocess_into;
-  if (debug_flag || exit_before_main_loop_run)
+  cli = cli_new(cli_var, command_line_mode);
+  if (debug_flag || exit_before_main_loop_run || cli->is_cli)
     {
       g_process_set_mode(G_PM_FOREGROUND);
     }
