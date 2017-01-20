@@ -265,7 +265,8 @@ main_loop_reload_config_initiate(void)
   main_loop_old_config = current_configuration;
   app_pre_config_loaded();
   main_loop_new_config = cfg_new(0);
-  if (!cfg_read_config(main_loop_new_config, resolvedConfigurablePaths.cfgfilename, FALSE, NULL))
+  if (!cfg_open_config(main_loop_new_config, resolvedConfigurablePaths.cfgfilename)
+      || !cfg_read_config(main_loop_new_config, FALSE, NULL))
     {
       cfg_free(main_loop_new_config);
       main_loop_new_config = NULL;
