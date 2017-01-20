@@ -29,6 +29,7 @@
 #include "stats/stats-csv.h"
 #include "stats/stats-counter.h"
 #include "mainloop.h"
+#include "stats-query-commands.h"
 
 #include <errno.h>
 #include <string.h>
@@ -134,6 +135,7 @@ ControlCommand default_commands[] =
   { "LOG", NULL, control_connection_message_log },
   { "STOP", NULL, control_connection_stop_process },
   { "RELOAD", NULL, control_connection_reload },
+  { "QUERY", NULL, process_query_command },
   { NULL, NULL, NULL },
 };
 
