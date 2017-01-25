@@ -39,19 +39,32 @@ stats_cluster_foreach_counter(StatsCluster *self, StatsForeachCounterFunc func, 
     }
 }
 
+static const gchar *tag_names[SC_TYPE_MAX] =
+{
+  /* [SC_TYPE_DROPPED]   = */ "dropped",
+  /* [SC_TYPE_PROCESSED] = */ "processed",
+  /* [SC_TYPE_STORED]   = */  "stored",
+  /* [SC_TYPE_SUPPRESSED] = */ "suppressed",
+  /* [SC_TYPE_STAMP] = */ "stamp",
+};
+
 const gchar *
 stats_cluster_get_type_name(gint type)
 {
-  static const gchar *tag_names[SC_TYPE_MAX] =
-  {
-    /* [SC_TYPE_DROPPED]   = */ "dropped",
-    /* [SC_TYPE_PROCESSED] = */ "processed",
-    /* [SC_TYPE_STORED]   = */  "stored",
-    /* [SC_TYPE_SUPPRESSED] = */ "suppressed",
-    /* [SC_TYPE_STAMP] = */ "stamp",
-  };
-
   return tag_names[type];
+}
+
+gint
+stats_cluster_get_type_by_name(const gchar *name)
+{
+  if (!name)
+    return SC_TYPE_MAX;
+
+  for (gint i = 0; i < SC_TYPE_MAX; i++)
+    if (!strcmp(name, tag_names[i]))
+      return i;
+
+  return SC_TYPE_MAX;
 }
 
 static const gchar *

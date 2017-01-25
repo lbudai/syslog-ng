@@ -109,6 +109,7 @@ typedef struct _StatsCluster
 typedef void (*StatsForeachCounterFunc)(StatsCluster *sc, gint type, StatsCounterItem *counter, gpointer user_data);
 
 const gchar *stats_cluster_get_type_name(gint type);
+gint stats_cluster_get_type_by_name(const gchar *name);
 const gchar *stats_cluster_get_component_name(StatsCluster *self, gchar *buf, gsize buf_len);
 
 void stats_cluster_foreach_counter(StatsCluster *self, StatsForeachCounterFunc func, gpointer user_data);
