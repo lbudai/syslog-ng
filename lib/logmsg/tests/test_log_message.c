@@ -382,3 +382,68 @@ Test(log_message, test_sdata_value_omits_unset_values)
   assert_sdata_value_equals(msg, "");
   log_msg_unref(msg);
 }
+
+#define DEFUN_KEY_VALUE(name, key, value, size) \
+  gchar name ## _key[size]; \
+  gchar name ## _value[size]; \
+  name ## _key[size-1] = name ## _value[size-1] = 0; \
+  memset(name ## _key, key, sizeof(name ##_key)-1); \
+  memset(name ## _value, value, sizeof(name ##_value)-1); \
+
+
+typedef struct
+{
+  guint32 nvtable_size_old;
+  guint32 nvtable_size_new;
+  guint32 msg_size_old;
+  guint32 msg_size_new;
+} sizes_t;
+
+sizes_t
+add_kv_and_check(LogMessage *msg, gchar *key, gchar *value)
+{
+  sizes_t sizes;
+  sizes.msg_size_old = log_msg_get_size(msg);
+  sizes.nvtable_size_old = nv_table_get_memory_consumption(msg->payload);
+  log_msg_set_value_by_name(msg, key, value, -1);
+  sizes.nvtable_size_new = nv_table_get_memory_consumption(msg->payload);
+  sizes.msg_size_new = log_msg_get_size(msg);
+  return sizes;
+}
+
+Test(log_message, test_message_size)
+{
+  LogMessage *msg = log_msg_new_empty();
+
+  sizes_t sizes;
+  DEFUN_KEY_VALUE(small, 'C', 'D', 10);
+  sizes = add_kv_and_check(msg, small_key, small_value);
+  // 9*'C'+'\0' + 9*'D'+'\0'
+  guint32 entry_size = NV_ENTRY_DIRECT_HDR + 9 + 9 + 2;
+  cr_assert_eq(sizes.nvtable_size_old + entry_size, sizes.nvtable_size_new);
+  cr_assert_eq(sizes.msg_size_old + entry_size, sizes.msg_size_new);  // Size increased because of nvtable
+
+  guint32 msg_size = sizes.msg_size_new;
+  log_msg_set_tag_by_name(msg, "test_tag_storage");
+  cr_assert(log_msg_is_tag_by_name(msg, "test_tag_storage"));
+  cr_assert_eq(msg_size, log_msg_get_size(msg)); // Tag is not increased until tag id 65
+
+  char *tag_name = strdup("00tagname");
+  // (*8 to convert ot bits) + no need plus 1 bcause we already added one tag: test_tag_storage
+  for (int i = 0; i < GLIB_SIZEOF_LONG*8; i++)
+    {
+      sprintf(tag_name, "%dtagname", i);
+      log_msg_set_tag_by_name(msg, tag_name);
+    }
+  free(tag_name);
+  cr_assert_eq(msg_size + 2*GLIB_SIZEOF_LONG, log_msg_get_size(msg));
+
+
+  DEFUN_KEY_VALUE(big, 'A', 'B', 256);
+  sizes = add_kv_and_check(msg, big_key, big_value); // nvtable is expanded
+  entry_size = NV_ENTRY_DIRECT_HDR + 255 + 255 + 2;
+  cr_assert_eq(sizes.nvtable_size_old + entry_size, sizes.nvtable_size_new); // but only increased by the entry
+  cr_assert_eq(sizes.msg_size_old + entry_size, sizes.msg_size_new);  // nvtable is doubled
+
+  log_msg_unref(msg);
+}

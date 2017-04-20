@@ -21,7 +21,7 @@
  * COPYING for details.
  *
  */
-  
+
 #ifndef LOGMSG_H_INCLUDED
 #define LOGMSG_H_INCLUDED
 
@@ -138,7 +138,7 @@ typedef struct _LogMessageQueueNode
 } LogMessageQueueNode;
 
 
-/* NOTE: the members are ordered according to the presumed use frequency. 
+/* NOTE: the members are ordered according to the presumed use frequency.
  * The structure itself is 2 cachelines, the border is right after the "msg"
  * member */
 struct _LogMessage
@@ -163,8 +163,8 @@ struct _LogMessage
   LMAckFunc ack_func;
   LogMessage *original;
 
-  /* message parts */ 
-  
+  /* message parts */
+
   /* the contents of the members below is directly copied into another
    * LogMessage with pointer values.  To change any of the fields please use
    * log_msg_set_*() functions, which will handle borrowed data members
@@ -331,5 +331,7 @@ void log_msg_global_deinit(void);
 void log_msg_registry_foreach(GHFunc func, gpointer user_data);
 
 gint log_msg_lookup_time_stamp_name(const gchar *name);
+
+guint32 log_msg_get_size(LogMessage *self);
 
 #endif

@@ -1753,6 +1753,16 @@ log_msg_lookup_time_stamp_name(const gchar *name)
   return -1;
 }
 
+guint32 log_msg_get_size(LogMessage *self)
+{
+  return
+    sizeof(LogMessage) + // msg.static fields
+    sizeof(AckRecord) +  // msg.ack_record
+    sizeof(GSockAddr) + sizeof (GSockAddrFuncs) + // msg.saddr + msg.saddr.sa_func
+    ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
+    nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
+}
+
 #ifdef __linux__
 
 const gchar *
