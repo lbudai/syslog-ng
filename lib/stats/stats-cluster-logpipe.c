@@ -32,6 +32,7 @@ static const gchar *tag_names[SC_TYPE_MAX] =
   /* [SC_TYPE_STORED]   = */  "stored",
   /* [SC_TYPE_SUPPRESSED] = */ "suppressed",
   /* [SC_TYPE_STAMP] = */ "stamp",
+  /* [SC_TYPE_MEMORY_USAGE] = */ "memory_usage",
 };
 
 static void
@@ -54,4 +55,3 @@ stats_cluster_logpipe_key_set(StatsClusterKey *key, guint16 component, const gch
 {
   stats_cluster_key_set(key, component, id, instance, _counter_group_logpipe_init);
 }
-

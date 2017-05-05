@@ -335,10 +335,11 @@ log_threaded_dest_driver_start(LogPipe *s)
   stats_register_counter(0, &sc_key, SC_TYPE_STORED, &self->stored_messages);
   stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
   stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &self->processed_messages);
+  stats_register_counter(0, &sc_key, SC_TYPE_MEMORY_USAGE, &self->memory_usage);
   stats_unlock();
 
   log_queue_set_counters(self->queue, self->stored_messages,
-                         self->dropped_messages);
+                         self->dropped_messages, self->memory_usage);
 
   self->seq_num = GPOINTER_TO_INT(cfg_persist_config_fetch(cfg,
                                                            log_threaded_dest_driver_format_seqnum_for_persist(self)));
@@ -357,7 +358,7 @@ log_threaded_dest_driver_deinit_method(LogPipe *s)
 
   log_queue_reset_parallel_push(self->queue);
 
-  log_queue_set_counters(self->queue, NULL, NULL);
+  log_queue_set_counters(self->queue, NULL, NULL, NULL);
 
   cfg_persist_config_add(log_pipe_get_config(s),
                          log_threaded_dest_driver_format_seqnum_for_persist(self),
@@ -371,6 +372,7 @@ log_threaded_dest_driver_deinit_method(LogPipe *s)
   stats_unregister_counter(&sc_key, SC_TYPE_STORED, &self->stored_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->processed_messages);
+  stats_unregister_counter(&sc_key, SC_TYPE_MEMORY_USAGE, &self->memory_usage);
   stats_unlock();
 
   if (!log_dest_driver_deinit_method(s))

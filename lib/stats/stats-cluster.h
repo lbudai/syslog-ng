@@ -32,7 +32,7 @@ enum
   /* direction bits, used to distinguish between source/destination drivers */
   SCS_SOURCE         = 0x0100,
   SCS_DESTINATION    = 0x0200,
-  
+
   /* drivers, this should be registered dynamically */
   SCS_FILE           = 1,
   SCS_PIPE           = 2,

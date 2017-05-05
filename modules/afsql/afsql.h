@@ -98,6 +98,7 @@ typedef struct _AFSqlDestDriver
 
   StatsCounterItem *dropped_messages;
   StatsCounterItem *stored_messages;
+  StatsCounterItem *memory_usage;
 
   GHashTable *dbd_options;
   GHashTable *dbd_options_numeric;
