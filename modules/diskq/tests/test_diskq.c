@@ -25,6 +25,7 @@
 #include "logqueue-fifo.h"
 #include "logqueue-disk.h"
 #include "logqueue-disk-reliable.h"
+#include "logqueue-disk-non-reliable.h"
 #include "diskq.h"
 #include "logpipe.h"
 #include "apphook.h"
@@ -132,6 +133,14 @@ testcase_ack_and_rewind_messages()
   q = log_queue_disk_reliable_new(&options);
   log_queue_set_use_backlog(q, TRUE);
 
+  StatsClusterKey sc_key;
+  stats_cluster_logpipe_key_set(&sc_key, SCS_DESTINATION, "stored messages", NULL );
+  stats_lock();
+  stats_register_counter(0, &sc_key, SC_TYPE_STORED, &q->stored_messages);
+  stats_unlock();
+
+  assert_gint(stats_counter_get(q->stored_messages), 0, "stored messages: %d", __LINE__);
+
   filename = g_string_sized_new(32);
   g_string_sprintf(filename,"test-rewind_and_acks.qf");
   unlink(filename->str);
@@ -140,15 +149,22 @@ testcase_ack_and_rewind_messages()
   fed_messages = 0;
   acked_messages = 0;
   feed_some_messages(q, 1000, &parse_options);
+  assert_gint(stats_counter_get(q->stored_messages), 1000, "stored messages: %d", __LINE__);
+
   for(i = 0; i < 10; i++)
     {
       send_some_messages(q,1);
+      assert_gint(stats_counter_get(q->stored_messages), 999, "stored messages wrong number %d", __LINE__);
       app_rewind_some_messages(q,1);
+      assert_gint(stats_counter_get(q->stored_messages), 1000, "stored messages wrong number: %d", __LINE__);
     }
   send_some_messages(q,1000);
+  assert_gint(stats_counter_get(q->stored_messages), 0, "stored messages: %d", __LINE__);
   app_ack_some_messages(q,500);
   app_rewind_some_messages(q,500);
+  assert_gint(stats_counter_get(q->stored_messages), 500, "stored messages: %d", __LINE__);
   send_some_messages(q,500);
+  assert_gint(stats_counter_get(q->stored_messages), 0, "stored messages: %d", __LINE__);
   app_ack_some_messages(q,500);
   log_queue_unref(q);
   unlink(filename->str);
@@ -293,6 +309,124 @@ testcase_with_threads()
   fprintf(stderr, "Feed speed: %.2lf\n", (double) TEST_RUNS * MESSAGES_SUM * 1000000 / sum_time);
 }
 
+static gboolean
+is_valid_msg_size(guint32 one_msg_size)
+{
+  /* 460 as of writing */
+  return (one_msg_size < 500 && one_msg_size > 400);
+}
+
+typedef LogQueue *(*queue_constructor_t)(DiskQueueOptions *);
+
+typedef struct
+{
+  guint32 disk_size;
+  gboolean reliable;
+  gboolean overflow_expected;
+  queue_constructor_t constructor;
+  guint32 qout_size;
+} diskq_tester_input_t;
+
+
+typedef struct
+{
+  LogQueue *q;
+  guint32 num;
+  guint32 single_msg_size;
+} feed_and_assert_t;
+
+void
+init_statistics(LogQueue *q)
+{
+
+  StatsClusterKey sc_key1, sc_key2;
+  stats_lock();
+  stats_cluster_logpipe_key_set(&sc_key1, SCS_DESTINATION, "stored messages", NULL );
+  stats_register_counter(0, &sc_key1, SC_TYPE_STORED, &q->stored_messages);
+  stats_cluster_logpipe_key_set(&sc_key2, SCS_DESTINATION, "memory usage", NULL );
+  stats_register_counter(0, &sc_key2, SC_TYPE_MEMORY_USAGE, &q->memory_usage);
+  stats_unlock();
+  stats_counter_set(q->stored_messages, 0);
+  stats_counter_set(q->memory_usage, 0);
+}
+
+static void
+testcase_diskq_statistics(diskq_tester_input_t input)
+{
+  LogQueue *q;
+  DiskQueueOptions options = {0};
+
+  _construct_options(&options, input.disk_size, 100000, input.reliable);
+  options.qout_size = input.qout_size;
+
+  q = input.constructor(&options);
+
+  init_statistics(q);
+  assert_gint(stats_counter_get(q->stored_messages), 0, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), 0, "memory_usage: line: %d", __LINE__);
+
+  GString *filename = g_string_sized_new(32);
+  g_string_sprintf(filename,"file.qf");
+  unlink(filename->str);
+  log_queue_disk_load_queue(q,filename->str);
+
+  feed_some_messages(q, 1, &parse_options);
+  assert_gint(stats_counter_get(q->stored_messages), 1, "stored messages: line: %d", __LINE__);
+  if (input.reliable)
+    {
+      /* For reliable queue we have qout = 0, so messages go to the overflow area.
+         But qreliable pushes 3 elements per message: msg, options, position */
+      if (input.overflow_expected)
+        assert_gint(((LogQueueDiskReliable *)q)->qreliable->length, 3, "one message on overflow area: line: %d", __LINE__);
+    }
+  else
+    assert_gint(((LogQueueDiskNonReliable *)q)->qoverflow->length, 0, "one message on overflow area: line: %d", __LINE__);
+
+  guint32 one_msg_size = stats_counter_get(q->memory_usage);
+  if (input.overflow_expected)
+    assert_true(is_valid_msg_size(one_msg_size), "one_msg_size %d: line: %d", one_msg_size, __LINE__);
+  else
+    assert_gint(stats_counter_get(q->memory_usage), 0, "stored messages: line: %d", __LINE__);
+
+  feed_some_messages(q, 1, &parse_options);
+  assert_gint(stats_counter_get(q->stored_messages), 2, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), one_msg_size*2, "memory_usage: line: %d", __LINE__);
+
+  if (input.reliable)
+    {
+      if (input.overflow_expected)
+        {
+          assert_gint(((LogQueueDiskReliable *)q)->qreliable->length, 6, "one message on overflow area: line: %d", __LINE__);
+        }
+    }
+  else
+    {
+      /* qout must be 1 for nonreliable case so we have only one message. But nonreliable pushes two elements: msg + options */
+      assert_gint(((LogQueueDiskNonReliable *)q)->qoverflow->length, 2, "one message on overflow area: line: %d", __LINE__);
+    }
+  send_some_messages(q,1);
+  assert_gint(stats_counter_get(q->stored_messages), 1, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), one_msg_size, "memory_usage: line: %d", __LINE__);
+
+  send_some_messages(q,1);
+  assert_gint(stats_counter_get(q->stored_messages), 0, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), 0, "memory_usage: line: %d", __LINE__);
+
+  feed_some_messages(q, 10, &parse_options);
+  assert_gint(stats_counter_get(q->stored_messages), 10, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), one_msg_size*10, "memory_usage: line: %d", __LINE__);
+
+  send_some_messages(q,5);
+  assert_gint(stats_counter_get(q->stored_messages), 5, "stored messages: line: %d", __LINE__);
+  assert_gint(stats_counter_get(q->memory_usage), one_msg_size*5, "memory_usage: line: %d", __LINE__);
+
+  unlink(filename->str);
+  g_string_free(filename,TRUE);
+
+  log_queue_unref(q);
+  disk_queue_options_destroy(&options);
+}
+
 int
 main()
 {
@@ -314,6 +448,31 @@ main()
 
   testcase_ack_and_rewind_messages();
   testcase_with_threads();
+
+  testcase_diskq_statistics((diskq_tester_input_t)
+  {
+    .disk_size = 10*1024, // small enough to trigger overflow
+     .reliable = TRUE,
+      .overflow_expected = TRUE,
+       .constructor = log_queue_disk_reliable_new
+  });
+
+  testcase_diskq_statistics((diskq_tester_input_t)
+  {
+    .disk_size = 500*1024, // no overflow
+     .reliable = TRUE,
+      .constructor = log_queue_disk_reliable_new
+  });
+
+  /* nonreliable version moves msgs from qoverflow only if there is free space in qout: qout_size must be 1 */
+  testcase_diskq_statistics((diskq_tester_input_t)
+  {
+    .disk_size = 1*1024,
+     .reliable = FALSE,
+      .overflow_expected = TRUE,
+       .qout_size = 1,
+        .constructor = log_queue_disk_non_reliable_new
+  });
 
   testcase_zero_diskbuf_alternating_send_acks();
   testcase_zero_diskbuf_and_normal_acks();
