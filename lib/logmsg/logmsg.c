@@ -1760,7 +1760,8 @@ guint32 log_msg_get_size(LogMessage *self)
     sizeof(AckRecord) +  // msg.ack_record
     sizeof(GSockAddr) + sizeof (GSockAddrFuncs) + // msg.saddr + msg.saddr.sa_func
     ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
-    nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
+    nv_table_get_memory_consumption(self->payload) + // msg.payload (nvtable)
+    (self->sdata ? self->alloc_sdata * sizeof(self->sdata[0]) : 0);
 }
 
 #ifdef __linux__

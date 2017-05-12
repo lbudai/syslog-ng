@@ -416,7 +416,7 @@ Test(log_message, test_message_size)
   LogMessage *msg = log_msg_new_empty();
 
   sizes_t sizes;
-  DEFUN_KEY_VALUE(small, 'C', 'D', 10);
+  DEFUN_KEY_VALUE(small, 'C', 'D', 9);
   sizes = add_kv_and_check(msg, small_key, small_value);
   // 9*'C'+'\0' + 9*'D'+'\0'
   guint32 entry_size = NV_ENTRY_DIRECT_HDR + 9 + 9 + 2;
@@ -444,6 +444,17 @@ Test(log_message, test_message_size)
   entry_size = NV_ENTRY_DIRECT_HDR + 255 + 255 + 2;
   cr_assert_eq(sizes.nvtable_size_old + entry_size, sizes.nvtable_size_new); // but only increased by the entry
   cr_assert_eq(sizes.msg_size_old + entry_size, sizes.msg_size_new);  // nvtable is doubled
+
+  log_msg_unref(msg);
+
+  msg = log_msg_new_empty();
+
+  guint32 old_size = log_msg_get_size(msg);
+  log_msg_set_value_by_name(msg, ".SDATA.t1", "sdataVa1", -1);
+  cr_assert_eq(msg->alloc_sdata, 8);
+  guint32 new_size = log_msg_get_size(msg);
+  int delta = (msg->sdata?sizeof(msg->sdata[0]) * msg->alloc_sdata : 0) + NV_ENTRY_DIRECT_HDR + 10*2;
+  cr_assert_eq(new_size, old_size + delta);
 
   log_msg_unref(msg);
 }
