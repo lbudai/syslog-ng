@@ -1304,8 +1304,12 @@ log_writer_init(LogPipe *s)
   if ((self->options->options & LWO_NO_STATS) == 0 && !self->counters.dropped_messages)
     _register_counters(self);
 
-  log_queue_set_counters(self->queue, self->counters.queued_messages, self->counters.dropped_messages,
-                         self->counters.memory_usage);
+  log_queue_set_counters(self->queue, (LogQueueCounters)
+  {
+    .queued_messages = self->counters.queued_messages,
+     .dropped_messages = self->counters.dropped_messages,
+      .memory_usage = self->counters.memory_usage
+  });
   if (self->proto)
     {
       LogProtoClient *proto;
@@ -1367,7 +1371,10 @@ log_writer_deinit(LogPipe *s)
   ml_batched_timer_unregister(&self->mark_timer);
 
   _unregister_counters(self);
-  log_queue_set_counters(self->queue, NULL, NULL, NULL);
+  log_queue_set_counters(self->queue, (LogQueueCounters)
+  {
+    NULL, NULL, NULL
+  });
 
   return TRUE;
 }

@@ -66,14 +66,14 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
       if (self->push_tail(self, msg, &local_options, path_options))
         {
           log_queue_push_notify (&self->super);
-          stats_counter_inc(self->super.queued_messages);
+          stats_counter_inc(self->super.counters.queued_messages);
           log_msg_ack(msg, &local_options, AT_PROCESSED);
           log_msg_unref(msg);
           g_static_mutex_unlock(&self->super.lock);
           return;
         }
     }
-  stats_counter_inc (self->super.dropped_messages);
+  stats_counter_inc (self->super.counters.dropped_messages);
 
   if (path_options->flow_control_requested)
     log_msg_ack(msg, path_options, AT_SUSPENDED);
@@ -110,7 +110,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
     }
   if (msg != NULL)
     {
-      stats_counter_dec(self->super.queued_messages);
+      stats_counter_dec(self->super.counters.queued_messages);
     }
   g_static_mutex_unlock(&self->super.lock);
   return msg;

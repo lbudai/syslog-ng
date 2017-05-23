@@ -1240,8 +1240,12 @@ afsql_dd_init(LogPipe *s)
       if (self->flags & AFSQL_DDF_EXPLICIT_COMMITS)
         log_queue_set_use_backlog(self->queue, TRUE);
     }
-  log_queue_set_counters(self->queue, self->counters.queued_messages, self->counters.dropped_messages,
-                         self->counters.memory_usage);
+  log_queue_set_counters(self->queue, (LogQueueCounters)
+  {
+    .queued_messages = self->counters.queued_messages,
+     .dropped_messages = self->counters.dropped_messages,
+      .memory_usage = self->counters.memory_usage
+  });
   if (!self->fields)
     {
       GList *col, *value;
@@ -1358,7 +1362,10 @@ afsql_dd_deinit(LogPipe *s)
 
   log_queue_reset_parallel_push(self->queue);
 
-  log_queue_set_counters(self->queue, NULL, NULL, NULL);
+  log_queue_set_counters(self->queue, (LogQueueCounters)
+  {
+    NULL, NULL, NULL
+  });
   cfg_persist_config_add(log_pipe_get_config(s), afsql_dd_format_persist_sequence_number(self),
                          GINT_TO_POINTER(self->seq_num), NULL, FALSE);
 
