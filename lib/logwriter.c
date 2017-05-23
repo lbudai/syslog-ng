@@ -1344,7 +1344,7 @@ _unregister_counters(LogWriter *self)
     stats_unregister_counter(&sc_key, SC_TYPE_QUEUED, &self->counters.queued_messages);
     stats_unregister_counter(&sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
     stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->stats_id,
-                                           self->stats_instance, "counters.log_queue_max_size");
+                                           self->stats_instance, "log_queue_max_size");
     stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
   }
   stats_unlock();
