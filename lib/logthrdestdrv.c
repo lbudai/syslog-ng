@@ -23,6 +23,7 @@
  */
 
 #include "stats/stats-views.h"
+#include "stats/stats-cluster-single.h"
 #include "logthrdestdrv.h"
 #include "seqnum.h"
 
@@ -311,6 +312,29 @@ log_threaded_dest_driver_start_thread(LogThrDestDriver *self)
 }
 
 
+static void
+_register_counters(LogThrDestDriver *self)
+{
+  stats_lock();
+  {
+    StatsClusterKey sc_key;
+    StatsCluster *cluster;
+    stats_cluster_logpipe_key_set(&sc_key,self->stats_source | SCS_DESTINATION,
+                                  self->super.super.id,
+                                  self->format.stats_instance(self));
+    cluster = stats_register_counter(0, &sc_key, SC_TYPE_QUEUED, &self->counters.queued_messages);
+    stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &self->counters.dropped_messages);
+    stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &self->counters.processed_messages);
+    stats_register_counter(0, &sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
+    stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
+                                           self->format.stats_instance(self), "log_queue_max_size");
+    stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
+    stats_register_written_view(cluster, self->counters.processed_messages, self->counters.dropped_messages,
+                                self->counters.queued_messages);
+  }
+  stats_unlock();
+}
+
 gboolean
 log_threaded_dest_driver_start(LogPipe *s)
 {
@@ -328,21 +352,10 @@ log_threaded_dest_driver_start(LogPipe *s)
       return FALSE;
     }
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsCluster *cluster;
-  stats_cluster_logpipe_key_set(&sc_key,self->stats_source | SCS_DESTINATION,
-                                self->super.super.id,
-                                self->format.stats_instance(self));
-  cluster = stats_register_counter(0, &sc_key, SC_TYPE_QUEUED, &self->queued_messages);
-  stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
-  stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &self->processed_messages);
-  stats_register_counter(0, &sc_key, SC_TYPE_MEMORY_USAGE, &self->memory_usage);
-  stats_register_written_view(cluster, self->processed_messages, self->dropped_messages, self->queued_messages);
-  stats_unlock();
+  _register_counters(self);
 
-  log_queue_set_counters(self->queue, self->queued_messages,
-                         self->dropped_messages, self->memory_usage);
+  log_queue_set_counters(self->queue, self->counters.queued_messages,
+                         self->counters.dropped_messages, self->counters.memory_usage);
 
   self->seq_num = GPOINTER_TO_INT(cfg_persist_config_fetch(cfg,
                                                            log_threaded_dest_driver_format_seqnum_for_persist(self)));
@@ -352,6 +365,26 @@ log_threaded_dest_driver_start(LogPipe *s)
   log_threaded_dest_driver_start_thread(self);
 
   return TRUE;
+}
+
+static void
+_unregister_counters(LogThrDestDriver *self)
+{
+  stats_lock();
+  {
+    StatsClusterKey sc_key;
+    stats_cluster_logpipe_key_set(&sc_key, self->stats_source | SCS_DESTINATION,
+                                  self->super.super.id,
+                                  self->format.stats_instance(self));
+    stats_unregister_counter(&sc_key, SC_TYPE_QUEUED, &self->counters.queued_messages);
+    stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->counters.dropped_messages);
+    stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->counters.processed_messages);
+    stats_unregister_counter(&sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
+    stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
+                                           self->format.stats_instance(self), "log_queue_max_size");
+    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
+  }
+  stats_unlock();
 }
 
 gboolean
@@ -367,16 +400,7 @@ log_threaded_dest_driver_deinit_method(LogPipe *s)
                          log_threaded_dest_driver_format_seqnum_for_persist(self),
                          GINT_TO_POINTER(self->seq_num), NULL, FALSE);
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_logpipe_key_set(&sc_key, self->stats_source | SCS_DESTINATION,
-                                self->super.super.id,
-                                self->format.stats_instance(self));
-  stats_unregister_counter(&sc_key, SC_TYPE_QUEUED, &self->queued_messages);
-  stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
-  stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->processed_messages);
-  stats_unregister_counter(&sc_key, SC_TYPE_MEMORY_USAGE, &self->memory_usage);
-  stats_unlock();
+  _unregister_counters(self);
 
   if (!log_dest_driver_deinit_method(s))
     return FALSE;
@@ -409,7 +433,7 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
   log_msg_add_ack(msg, path_options);
   log_queue_push_tail(self->queue, log_msg_ref(msg), path_options);
 
-  stats_counter_inc(self->processed_messages);
+  stats_counter_inc(self->counters.processed_messages);
 
   log_dest_driver_queue_method(s, msg, path_options, user_data);
 }
@@ -444,7 +468,7 @@ void
 log_threaded_dest_driver_message_drop(LogThrDestDriver *self,
                                       LogMessage *msg)
 {
-  stats_counter_inc(self->dropped_messages);
+  stats_counter_inc(self->counters.dropped_messages);
   msg_error("Multiple failures while sending message to destination, message dropped",
             evt_tag_str("driver", self->super.super.id),
             evt_tag_int("number_of_retries", self->retries.max));
