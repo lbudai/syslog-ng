@@ -540,6 +540,13 @@ log_queue_fifo_free(LogQueue *s)
   log_queue_free_method(s);
 }
 
+static gint
+_get_capacity(LogQueue *s)
+{
+  LogQueueFifo *self = (LogQueueFifo *) s;
+  return self->qoverflow_size;
+}
+
 LogQueue *
 log_queue_fifo_new(gint qoverflow_size, const gchar *persist_name)
 {
@@ -560,6 +567,7 @@ log_queue_fifo_new(gint qoverflow_size, const gchar *persist_name)
   self->super.ack_backlog = log_queue_fifo_ack_backlog;
   self->super.rewind_backlog = log_queue_fifo_rewind_backlog;
   self->super.rewind_backlog_all = log_queue_fifo_rewind_backlog_all;
+  self->super.capacity_fn = _get_capacity;
 
   self->super.free_fn = log_queue_fifo_free;
 

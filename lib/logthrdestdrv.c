@@ -358,7 +358,8 @@ log_threaded_dest_driver_start(LogPipe *s)
   {
     .queued_messages = self->counters.queued_messages,
      .dropped_messages = self->counters.dropped_messages,
-      .memory_usage = self->counters.memory_usage
+      .memory_usage = self->counters.memory_usage,
+       .log_queue_max_size = self->counters.log_queue_max_size,
   });
 
   self->seq_num = GPOINTER_TO_INT(cfg_persist_config_fetch(cfg,

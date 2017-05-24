@@ -1308,7 +1308,8 @@ log_writer_init(LogPipe *s)
   {
     .queued_messages = self->counters.queued_messages,
      .dropped_messages = self->counters.dropped_messages,
-      .memory_usage = self->counters.memory_usage
+      .memory_usage = self->counters.memory_usage,
+       .log_queue_max_size = self->counters.log_queue_max_size,
   });
   if (self->proto)
     {

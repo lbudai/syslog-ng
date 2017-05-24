@@ -173,6 +173,7 @@ log_queue_set_counters(LogQueue *self, LogQueueCounters counters)
 {
   self->counters = counters;
   stats_counter_set(self->counters.queued_messages, log_queue_get_length(self));
+  stats_counter_set(self->counters.log_queue_max_size, log_queue_get_capacity(self));
 }
 
 void
