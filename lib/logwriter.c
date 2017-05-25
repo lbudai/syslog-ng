@@ -47,6 +47,7 @@
 #include <iv.h>
 #include <iv_event.h>
 #include <iv_work.h>
+#include <stdio.h>
 
 typedef enum
 {
@@ -71,7 +72,6 @@ struct _LogWriter
     StatsCounterItem *processed_messages;
     StatsCounterItem *queued_messages;
     StatsCounterItem *memory_usage;
-    StatsCounterItem *log_queue_max_size;
   } counters;
   LogPipe *control;
   LogWriterOptions *options;
@@ -1264,6 +1264,44 @@ log_writer_init_watches(LogWriter *self)
   self->io_job.completion = (void (*)(void *)) log_writer_work_finished;
 }
 
+static gboolean
+_is_log_queue_fifo(gchar *queue_type)
+{
+  return (g_strcmp0(queue_type, "FIFO") == 0);
+}
+
+static gboolean
+_is_log_queue_disk(gchar *queue_type)
+{
+  return (g_strcmp0(queue_type, "DISK") == 0);
+}
+
+static void
+_register_queue_specific_counters(LogWriter *self, StatsClusterKey *sc_key)
+{
+  gchar *queue_type = log_queue_get_type(self->queue);
+
+  if (_is_log_queue_fifo(queue_type))
+    {
+      stats_cluster_single_key_set_with_name(sc_key, self->stats_source | SCS_DESTINATION, self->stats_id,
+                                             self->stats_instance, "mem_capacity_count");
+      stats_register_counter(self->stats_level, sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.memory_capacity);
+    }
+  else if (_is_log_queue_disk(queue_type))
+    {
+      stats_cluster_single_key_set_with_name(sc_key, self->stats_source | SCS_DESTINATION, self->stats_id,
+                                             self->stats_instance, "disk_capacity_byte");
+      stats_register_counter(self->stats_level, sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.disk_capacity);
+
+      if (log_queue_disk_is_reliable(self->queue))
+        {
+          stats_cluster_single_key_set_with_name(sc_key, self->stats_source | SCS_DESTINATION, self->stats_id,
+                                                 self->stats_instance, "mem_capacity_count");
+          stats_register_counter(self->stats_level, sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.memory_capacity);
+        }
+    }
+}
+
 static void
 _register_counters(LogWriter *self)
 {
@@ -1279,9 +1317,7 @@ _register_counters(LogWriter *self)
     stats_register_counter(self->stats_level, &sc_key, SC_TYPE_PROCESSED, &self->counters.processed_messages);
     stats_register_counter(self->stats_level, &sc_key, SC_TYPE_QUEUED, &self->counters.queued_messages);
     stats_register_counter(self->stats_level, &sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
-    stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->stats_id,
-                                           self->stats_instance, "log_queue_max_size");
-    stats_register_counter(self->stats_level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
+    _register_queue_specific_counters(self, &sc_key);
     if (cluster != NULL)
       stats_register_written_view(cluster, self->counters.processed_messages, self->counters.dropped_messages,
                                   self->counters.queued_messages);
@@ -1309,7 +1345,8 @@ log_writer_init(LogPipe *s)
     .queued_messages = self->counters.queued_messages,
      .dropped_messages = self->counters.dropped_messages,
       .memory_usage = self->counters.memory_usage,
-       .log_queue_max_size = self->counters.log_queue_max_size,
+       .memory_capacity = self->counters.memory_capacity,
+       .disk_capacity = self->counters.disk_capacity,
   });
   if (self->proto)
     {

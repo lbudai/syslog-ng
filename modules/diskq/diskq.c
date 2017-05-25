@@ -44,7 +44,7 @@ _acquire_queue(LogDestDriver *dd, const gchar *persist_name, gpointer user_data)
 
   if (queue)
     {
-      if (queue->type != log_queue_disk_type || self->options.reliable != log_queue_disk_is_reliable(queue))
+      if (queue->queue_type != LOG_QUEUE_DISK_TYPE || self->options.reliable != log_queue_disk_is_reliable(queue))
         {
           log_queue_unref(queue);
           queue = NULL;
