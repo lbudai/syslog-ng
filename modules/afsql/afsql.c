@@ -1184,7 +1184,7 @@ _register_counters(AFSqlDestDriver *self)
     stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &self->counters.dropped_messages);
     stats_cluster_single_key_set_with_name(&sc_key, SCS_SQL | SCS_DESTINATION, self->super.super.id,
                                            afsql_dd_format_stats_instance(self), "log_queue_max_size");
-    stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
+    log_queue_register_internal_counters(self->queue, &sc_key, 0);
   }
   stats_unlock();
 }
@@ -1199,9 +1199,6 @@ _unregister_counters(AFSqlDestDriver *self)
                                   afsql_dd_format_stats_instance(self) );
     stats_unregister_counter(&sc_key, SC_TYPE_QUEUED, &self->counters.queued_messages);
     stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->counters.dropped_messages);
-    stats_cluster_single_key_set_with_name(&sc_key, SCS_SQL | SCS_DESTINATION, self->super.super.id,
-                                           afsql_dd_format_stats_instance(self), "log_queue_max_size");
-    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
   }
   stats_unlock();
 }
@@ -1240,12 +1237,12 @@ afsql_dd_init(LogPipe *s)
       if (self->flags & AFSQL_DDF_EXPLICIT_COMMITS)
         log_queue_set_use_backlog(self->queue, TRUE);
     }
-  log_queue_set_counters(self->queue, (LogQueueCounters)
+  log_queue_set_counters(self->queue, (LogQueueCountersExternal)
   {
     .queued_messages = self->counters.queued_messages,
      .dropped_messages = self->counters.dropped_messages,
       .memory_usage = self->counters.memory_usage,
-       .log_queue_max_size = self->counters.log_queue_max_size,
+//       .log_queue_max_size = self->counters.log_queue_max_size,
   });
   if (!self->fields)
     {
@@ -1363,7 +1360,7 @@ afsql_dd_deinit(LogPipe *s)
 
   log_queue_reset_parallel_push(self->queue);
 
-  log_queue_set_counters(self->queue, (LogQueueCounters)
+  log_queue_set_counters(self->queue, (LogQueueCountersExternal)
   {
     NULL, NULL, NULL
   });

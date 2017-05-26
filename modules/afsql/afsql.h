@@ -101,7 +101,6 @@ typedef struct _AFSqlDestDriver
     StatsCounterItem *dropped_messages;
     StatsCounterItem *queued_messages;
     StatsCounterItem *memory_usage;
-    StatsCounterItem *log_queue_max_size;
   } counters;
 
   GHashTable *dbd_options;

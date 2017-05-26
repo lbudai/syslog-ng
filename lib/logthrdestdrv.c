@@ -326,11 +326,11 @@ _register_counters(LogThrDestDriver *self)
     stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &self->counters.dropped_messages);
     stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &self->counters.processed_messages);
     stats_register_counter(0, &sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
-    stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                           self->format.stats_instance(self), "log_queue_max_size");
-    stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
-    stats_register_written_view(cluster, self->counters.processed_messages, self->counters.dropped_messages,
-                                self->counters.queued_messages);
+    log_queue_register_internal_counters(self->queue, &sc_key, 0);
+
+    if (cluster != NULL)
+      stats_register_written_view(cluster, self->counters.processed_messages, self->counters.dropped_messages,
+                                  self->counters.queued_messages);
   }
   stats_unlock();
 }
@@ -354,12 +354,12 @@ log_threaded_dest_driver_start(LogPipe *s)
 
   _register_counters(self);
 
-  log_queue_set_counters(self->queue, (LogQueueCounters)
+  log_queue_set_counters(self->queue, (LogQueueCountersExternal)
   {
     .queued_messages = self->counters.queued_messages,
      .dropped_messages = self->counters.dropped_messages,
       .memory_usage = self->counters.memory_usage,
-       .log_queue_max_size = self->counters.log_queue_max_size,
+//       .log_queue_max_size = self->counters..log_queue_max_size,
   });
 
   self->seq_num = GPOINTER_TO_INT(cfg_persist_config_fetch(cfg,
@@ -387,7 +387,7 @@ _unregister_counters(LogThrDestDriver *self)
     stats_unregister_counter(&sc_key, SC_TYPE_MEMORY_USAGE, &self->counters.memory_usage);
     stats_cluster_single_key_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
                                            self->format.stats_instance(self), "log_queue_max_size");
-    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
+//    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->counters.log_queue_max_size);
   }
   stats_unlock();
 }
@@ -399,7 +399,7 @@ log_threaded_dest_driver_deinit_method(LogPipe *s)
 
   log_queue_reset_parallel_push(self->queue);
 
-  log_queue_set_counters(self->queue, (LogQueueCounters)
+  log_queue_set_counters(self->queue, (LogQueueCountersExternal)
   {
     NULL, NULL, NULL
   });

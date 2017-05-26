@@ -169,11 +169,11 @@ log_queue_check_items(LogQueue *self, gint *timeout, LogQueuePushNotifyFunc para
 }
 
 void
-log_queue_set_counters(LogQueue *self, LogQueueCounters counters)
+log_queue_set_counters(LogQueue *self, LogQueueCountersExternal counters)
 {
-  self->counters = counters;
-  stats_counter_set(self->counters.queued_messages, log_queue_get_length(self));
-  stats_counter_set(self->counters., log_queue_get_capacity(self));
+  self->counters.external = counters;
+  stats_counter_set(self->counters.external.queued_messages, log_queue_get_length(self));
+//  stats_counter_set(self->counters.intenal, log_queue_get_capacity(self));
 }
 
 void
