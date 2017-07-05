@@ -171,6 +171,8 @@ AC_ARG_WITH(package_name,
    [  --with-package-name=package name Package name is printed out when syslog-ng started with --version],
    package_name=$with_package_name)
 
+AC_ARG_ENABLE(server_mode,
+              [  --enable-server-mode   Enable server mode.],, enable_server_mode="yes")
 
 AC_ARG_ENABLE(debug,
               [  --enable-debug      Enable debugging code.],, enable_debug="no")
@@ -1622,6 +1624,7 @@ AC_DEFINE_UNQUOTED(PACKAGE_NAME, "$package_name", [package name])
 
 
 AC_DEFINE_UNQUOTED(WITH_COMPILE_DATE, $wcmp_date, [Include the compile date in the binary])
+AC_DEFINE_UNQUOTED(ENABLE_SERVER_MODE, `enable_value $enable_server_mode`, [Enable server mode])
 AC_DEFINE_UNQUOTED(ENABLE_DEBUG, `enable_value $enable_debug`, [Enable debugging])
 AC_DEFINE_UNQUOTED(ENABLE_LIBUUID, `enable_value $enable_libuuid`, [Enable libuuid support])
 AC_DEFINE_UNQUOTED(ENABLE_GPROF, `enable_value $enable_gprof`, [Enable gcc profiling])
@@ -1756,6 +1759,7 @@ echo "  mongoc                      : $with_mongoc"
 echo "  librabbitmq                 : $with_librabbitmq_client"
 echo "  jsonc                       : $with_jsonc"
 echo " Features:"
+echo "  Server mode                 : ${enable_server_mode:=yes}"
 echo "  Debug symbols               : ${enable_debug:=no}"
 echo "  GCC profiling               : ${enable_gprof:=no}"
 echo "  Memtrace                    : ${enable_memtrace:=no}"
