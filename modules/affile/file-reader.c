@@ -123,6 +123,7 @@ _construct_proto(FileReader *self, gint fd)
 
   transport = _construct_transport(self, fd);
 
+  proto_options->super.super.read_old_records = reader_options->super.read_old_records;
   format_handler = reader_options->parse_options.format_handler;
   if ((format_handler && format_handler->construct_proto))
     {

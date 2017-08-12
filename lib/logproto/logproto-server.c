@@ -153,6 +153,7 @@ log_proto_server_options_defaults(LogProtoServerOptions *options)
   options->init_buffer_size = -1;
   options->max_buffer_size = -1;
   options->position_tracking_enabled = FALSE;
+  options->read_old_records = TRUE;
 }
 
 void
@@ -182,6 +183,7 @@ log_proto_server_options_init(LogProtoServerOptions *options, GlobalConfig *cfg)
     }
   if (options->init_buffer_size == -1)
     options->init_buffer_size = MIN(options->max_msg_size, options->max_buffer_size);
+  options->read_old_records = TRUE;
   options->initialized = TRUE;
 }
 

@@ -162,7 +162,7 @@ error:
 
 static void
 log_proto_buffered_server_apply_state(LogProtoBufferedServer *self, PersistEntryHandle handle,
-                                      const gchar *persist_name)
+                                      const gchar *persist_name, gboolean new_state)
 {
   struct stat st;
   gint64 ofs = 0;
@@ -189,7 +189,6 @@ log_proto_buffered_server_apply_state(LogProtoBufferedServer *self, PersistEntry
       state->raw_stream_pos <= st.st_size)
     {
       ofs = state->raw_stream_pos;
-
       lseek(fd, ofs, SEEK_SET);
     }
   else
@@ -299,6 +298,13 @@ error:
   lseek(fd, 0, SEEK_SET);
 
 exit:
+  if (new_state)
+    {
+      if (self->super.options->read_old_records)
+        ofs = lseek(fd, 0, SEEK_SET);
+      else
+        ofs = lseek(fd, 0, SEEK_END);
+    }
   state->file_inode = st.st_ino;
   state->file_size = st.st_size;
   state->raw_stream_pos = ofs;
@@ -310,6 +316,19 @@ exit:
   state = NULL;
   log_proto_buffered_server_put_state(self);
 }
+
+static void
+_apply_existing_state(LogProtoBufferedServer *self, PersistEntryHandle handle, const gchar *persist_name)
+{
+  log_proto_buffered_server_apply_state(self, handle, persist_name, FALSE);
+}
+
+static void
+_apply_new_state(LogProtoBufferedServer *self, PersistEntryHandle handle, const gchar *persist_name)
+{
+  log_proto_buffered_server_apply_state(self, handle, persist_name, TRUE);
+}
+
 
 static PersistEntryHandle
 log_proto_buffered_server_alloc_state(LogProtoBufferedServer *self, PersistState *persist_state,
@@ -327,7 +346,6 @@ log_proto_buffered_server_alloc_state(LogProtoBufferedServer *self, PersistState
       state->header.big_endian = (G_BYTE_ORDER == G_BIG_ENDIAN);
 
       persist_state_unmap_entry(persist_state, handle);
-
     }
   return handle;
 }
@@ -438,7 +456,7 @@ log_proto_buffered_server_restart_with_state(LogProtoServer *s, PersistState *pe
       new_state_handle = log_proto_buffered_server_alloc_state(self, persist_state, persist_name);
       if (!new_state_handle)
         goto fallback_non_persistent;
-      log_proto_buffered_server_apply_state(self, new_state_handle, persist_name);
+      _apply_new_state(self, new_state_handle, persist_name);
       return TRUE;
     }
   if (persist_version < 4)
@@ -460,7 +478,7 @@ log_proto_buffered_server_restart_with_state(LogProtoServer *s, PersistState *pe
        * branches.
        */
 
-      log_proto_buffered_server_apply_state(self, new_state_handle, persist_name);
+      _apply_existing_state(self, new_state_handle, persist_name);
       return success;
     }
   else if (persist_version == 4)
@@ -496,7 +514,7 @@ log_proto_buffered_server_restart_with_state(LogProtoServer *s, PersistState *pe
           goto error;
         }
       persist_state_unmap_entry(persist_state, old_state_handle);
-      log_proto_buffered_server_apply_state(self, old_state_handle, persist_name);
+      _apply_existing_state(self, old_state_handle, persist_name);
       return TRUE;
     }
   else
@@ -525,7 +543,7 @@ error:
       state->file_inode = 0;
       state->file_size = 0;
       if (new_state_handle)
-        log_proto_buffered_server_apply_state(self, new_state_handle, persist_name);
+        _apply_new_state(self, new_state_handle, persist_name);
       else
         self->state1 = new_state;
     }
