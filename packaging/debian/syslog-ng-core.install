@@ -33,10 +33,9 @@ usr/share/syslog-ng/include/scl/logmatic/*
 usr/share/syslog-ng/include/scl/solaris/*
 usr/share/syslog-ng/include/scl/cisco/*
 usr/share/syslog-ng/xsd/*
-[!kfreebsd-any] debian/syslog-ng.systemd =>  lib/systemd/system/syslog-ng.service
+debian/syslog-ng.systemd => lib/systemd/system/syslog-ng.service
 
 debian/syslog-ng.conf                   /etc/syslog-ng/
 debian/scl.conf                         /etc/syslog-ng/
 
-[kfreebsd-any] debian/tty10.kfreebsd.conf => /usr/share/syslog-ng/include/scl/system/tty10.conf
-[!kfreebsd-any] debian/tty10.linux.conf   => /usr/share/syslog-ng/include/scl/system/tty10.conf
+debian/tty10.linux.conf    => /usr/share/syslog-ng/include/scl/system/tty10.conf

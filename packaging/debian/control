@@ -40,7 +40,7 @@ Build-Depends: debhelper (>= 9~),
                libmaxminddb-dev,
                openjdk-7-jdk | openjdk-8-jdk,
                gradle (>=2.2.1),
-               criterion-dev
+               syslog-ng-java-compile-deps-mvn-repo
 Build-Conflicts: autoconf2.13
 Standards-Version: 3.9.8
 Homepage: http://www.syslog-ng.org/
