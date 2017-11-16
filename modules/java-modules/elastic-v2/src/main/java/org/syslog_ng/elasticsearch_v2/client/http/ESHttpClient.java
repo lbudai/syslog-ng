@@ -161,8 +161,9 @@ public class ESHttpClient implements ESClient {
 			if (result != null ) {
 				clusterName = result.getValue("cluster_name").toString();
 			} 
-		} catch (IOException e) {
+		} catch (Exception e) {
       logger.info("Failed to get cluster name from the client, use the name set in the config file: " + clusterName);
+      logger.info("Exception: " + e);
 		}
 		return clusterName;
 	}
