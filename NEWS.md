@@ -1,14 +1,17 @@
 3.13.1
 
-<!-- Thu, 16 Nov 2017 10:44:58 +0100 -->
+<!-- Thu, 30 Nov 2017 13:38:22 +0100 -->
 
 # Features
 
+ * Add app-parser() framework (automatic parsing of log messages) (#1689)
  * Support microseconds in Riemann destination (#1710)
  * Add osquery destination as an SCL plugin (#1728)
  * Add network load balancer destination (#1706)
  * Add possibility to only signal re-open of file handles (SIGUSR1) (#1530)
  * It is possible from now to limit the number of registered dynamic counters (#1743)
+ * Add $(binary) template function (#1679)
+ * Add experimental transport for transferring messages in whole between syslog-ng instances (EWMM) (#1689)
 
 # Bugfixes
 
@@ -29,6 +32,10 @@
  * Fix a crash when getent is used empty group (#1691)
  * Fix jvm-options() (#1704)
  * Fix a crash in Python language binding (#1694)
+ * Fix a crash in afmongodb (#1765)
+ * Fix a memory leak in afmongodb (#1766)
+ * Fix name-to-GID calculation in the $(getent) template function (#1764)
+ * Fix a crash when redis is configured without the command() option (#1767)
 
 # Other changes
 
@@ -36,10 +43,15 @@
  * Provide tls block for tls options in amqp(), http(), riemann() destination drivers (#1715)
  * It it possible from now to register blocks and generators as plugins (#1657)
  * Drop compatiblity with configurations below 3.0 (#1709)
+ * Do not change permissions of a file by default (#1782)
+ * Allow source files to specify permissions locally (#1782)
+ * Minor performance improvement (#1729)
+ * The current config version can be queried with "--version" (#1740)
 
 # Notes to the developers
 
  * Change configure default option for jsonc and mongoc from auto to internal (#1735)
+ * Disable ASLR when running unit tests (#1753)
 
 # Credits
 
@@ -53,6 +65,6 @@ of syslog-ng, contribute.
 We would like to thank the following people for their contribution:
 Andras Mitzki, Antal Nemes, Attila Szalay, Balazs Scheidler, Gabor Nagy,
 Jakub Jankowski, Janos Szigetvari, Laszlo Budai, Laszlo Varady, Laszlo Szemere,
-Marton Illes, Mate Farkas, Peter Kokai, Pontus Andersson, Sam Stephenson, 
+Marton Illes, Mate Farkas, Peter Kokai, Pontus Andersson, Sam Stephenson,
 Sebastian Roland, Viktor Juhasz, Zoltan Pallagi.
 
