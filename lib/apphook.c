@@ -40,6 +40,8 @@
 #include "crypto.h"
 #include "value-pairs/value-pairs.h"
 #include "scratch-buffers.h"
+#include "secret-storage/nondumpable-allocator.h"
+#include "secret-storage/secret-storage.h"
 
 #include <iv.h>
 #include <iv_work.h>
@@ -120,6 +122,12 @@ app_fatal(const char *msg)
 }
 
 void
+nondumpable_allocator_logger(gchar *summary, gchar *reason)
+{
+  msg_fatal(summary, evt_tag_str("reason", reason));
+}
+
+void
 app_startup(void)
 {
   msg_init(FALSE);
@@ -142,6 +150,8 @@ app_startup(void)
   value_pairs_global_init();
   service_management_init();
   scratch_buffers_allocator_init();
+  nondumpable_setlogger(nondumpable_allocator_logger);
+  secret_storage_init();
 }
 
 void
@@ -175,6 +185,7 @@ void
 app_shutdown(void)
 {
   run_application_hook(AH_SHUTDOWN, TRUE);
+  secret_storage_deinit();
   scratch_buffers_allocator_deinit();
   scratch_buffers_global_deinit();
   value_pairs_global_deinit();
