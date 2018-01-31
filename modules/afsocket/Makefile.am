@@ -46,7 +46,9 @@ modules_afsocket_libafsocket_la_CPPFLAGS	=	\
 modules_afsocket_libafsocket_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS) $(OPENSSL_LIBS)	\
 	$(ZLIB_LIBS) $(LIBNET_LIBS)	\
-	$(LIBWRAP_LIBS) $(libsystemd_LIBS)
+	$(LIBWRAP_LIBS) $(libsystemd_LIBS) \
+	$(top_builddir)/lib/secret-storage/libsecret-storage.la
+
 modules_afsocket_libafsocket_la_DEPENDENCIES= 	\
 	$(MODULE_DEPS_LIBS)
 modules_afsocket_libafsocket_la_LDFLAGS	= 	\
