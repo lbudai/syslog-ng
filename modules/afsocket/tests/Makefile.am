@@ -17,8 +17,7 @@ modules_afsocket_tests_test_transport_mapper_CFLAGS = 	\
 	-I$(top_srcdir)/modules/afsocket
 
 modules_afsocket_tests_test_transport_mapper_LDADD = 	\
-	$(TEST_LDADD)
-
+	$(TEST_LDADD) -dlpreopen $(top_builddir)/lib/secret-storage/libsecret-storage.la
 modules_afsocket_tests_test_transport_mapper_LDFLAGS =	\
 	-dlpreopen $(top_builddir)/modules/afsocket/libafsocket.la
 
@@ -31,7 +30,7 @@ modules_afsocket_tests_test_transport_mapper_inet_CFLAGS = 	\
 	-I$(top_srcdir)/modules/afsocket
 
 modules_afsocket_tests_test_transport_mapper_inet_LDADD = 	\
-	$(TEST_LDADD)
+	$(TEST_LDADD) -dlpreopen $(top_builddir)/lib/secret-storage/libsecret-storage.la
 
 modules_afsocket_tests_test_transport_mapper_inet_LDFLAGS =	\
 	-dlpreopen $(top_builddir)/modules/afsocket/libafsocket.la
@@ -45,7 +44,7 @@ modules_afsocket_tests_test_transport_mapper_unix_CFLAGS = 	\
 	-I$(top_srcdir)/modules/afsocket
 
 modules_afsocket_tests_test_transport_mapper_unix_LDADD = 	\
-	$(TEST_LDADD)
+	$(TEST_LDADD) -dlpreopen $(top_builddir)/lib/secret-storage/libsecret-storage.la
 
 modules_afsocket_tests_test_transport_mapper_unix_LDFLAGS =	\
 	-dlpreopen $(top_builddir)/modules/afsocket/libafsocket.la
