@@ -370,11 +370,11 @@ static GOptionEntry no_options[] =
 static GOptionEntry password_options[] =
 {
   {
-    "store", 0, 0, G_OPTION_ARG_STRING, &password,
-    "password to store for authentication", "key <password>"
+    "add", 0, 0, G_OPTION_ARG_NONE, &password,
+    "add key password pair to be stored for authentication", "key <password>"
   },
   {
-    "status", 0, 0, G_OPTION_ARG_STRING, &password,
+    "status", 0, 0, G_OPTION_ARG_NONE, &password,
     "list status of stored secrets", ""
   },
   { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL }
@@ -411,17 +411,35 @@ slng_passwd(int argc, char *argv[], const gchar *mode)
   gint buff_size = 255;
   gchar buff[buff_size+1];
 
-  if (g_strcmp0(argv[1],"store")==0 && (argv[3]==NULL || strlen(argv[3])==0))
+  if (g_strcmp0(mode,"password-add")==0)
     {
-      gulong password_length = buff_size;
-      gchar passwd[password_length+1];
-      get_password_from_stdin(passwd,&password_length);
-      snprintf(buff, buff_size, "PWD %s %s %s", argv[1], argv[2], passwd);
-      memset(passwd,'?',password_length);
+      if (argv[1]==NULL || strlen(argv[1])==0)
+        {
+          print_usage(argv[0]);
+          return 1;
+        }
+
+      if (argv[2]==NULL || strlen(argv[2])==0)
+        {
+          gulong password_length = buff_size;
+          gchar password_buffer[password_length+1];
+          get_password_from_stdin(password_buffer,&password_length);
+          snprintf(buff, buff_size, "PWD %s %s %s", "add", argv[1], password_buffer);
+          memset(password_buffer,'?',password_length);
+        }
+      else
+        {
+          snprintf(buff, buff_size, "PWD %s %s %s", "add", argv[1], argv[2]);
+        }
+    }
+  else if (g_strcmp0(mode,"password-status")==0)
+    {
+      snprintf(buff, buff_size, "PWD %s", "status");
     }
   else
     {
-      snprintf(buff, buff_size, "PWD %s %s %s", argv[1], argv[2], argv[3]);
+      print_usage(argv[0]);
+      return 1;
     }
 
   gint result = _dispatch_command(buff);
@@ -478,7 +496,8 @@ static struct
   { "reopen", no_options, "Re-open of log destination files", slng_reopen },
   { "query", query_options, "Query syslog-ng statistics. Possible commands: list, get, get --sum", slng_query },
   { "show-license-info", license_options, "Show information about the license", slng_license },
-  { "password", password_options, "Store/List key-password pairs. syslog-ng-ctl password (store|status)", slng_passwd },
+  { "password-add", no_options, "Add key-password pairs. syslog-ng-ctl password-add key [password]", slng_passwd },
+  { "password-status", no_options, "Query stored key/password status)", slng_passwd },
   { NULL, NULL },
 };
 
@@ -557,8 +576,11 @@ main(int argc, char *argv[])
   g_option_context_free(ctx);
 
   control_client = control_client_new(control_name);
+  if (control_client_connect(control_client))
+    result = modes[mode].main(argc, argv, modes[mode].mode);
+  else
+    result = FALSE;
 
-  result = modes[mode].main(argc, argv, modes[mode].mode);
   control_client_free(control_client);
   return result;
 }
