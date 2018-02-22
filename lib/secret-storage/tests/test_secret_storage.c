@@ -257,30 +257,6 @@ Test(secretstorage, subscribe_until_success)
   cr_assert(test_variable);
 }
 
-#if (SYSLOG_NG_ENABLE_FORCED_SERVER_MODE)
-Test(secretstorage, test_rlimit)
-{
-  struct rlimit locked_limit;
-  cr_assert(!getrlimit(RLIMIT_MEMLOCK, &locked_limit));
-  locked_limit.rlim_cur = MIN(locked_limit.rlim_max, 64 * 1024);
-  cr_assert(!setrlimit(RLIMIT_MEMLOCK, &locked_limit));
-  const gsize PAGESIZE = sysconf(_SC_PAGE_SIZE);
-
-  gchar *key_fmt = g_strdup("keyXXX");
-  int i = 0;
-  int for_limit = locked_limit.rlim_cur/PAGESIZE;
-  for (; i < for_limit; i++)
-    {
-      sprintf(key_fmt, "key%03d", i);
-      cr_assert(secret_storage_store_string(key_fmt, "value"), "offending_key: %s, for_limit: %d", key_fmt, for_limit);
-    }
-
-  sprintf(key_fmt, "key%03d", i);
-  cr_assert_not(secret_storage_store_string(key_fmt, "value"), "offending_key: %s", key_fmt);
-  cr_assert(secret_storage_subscribe_for_key("key000", secret_checker, "value"));
-}
-#endif
-
 static void
 update_state_callback(Secret *secret, gpointer user_data)
 {
