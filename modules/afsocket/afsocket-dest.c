@@ -198,11 +198,11 @@ afsocket_dd_start_reconnect_timer(AFSocketDestDriver *self)
   iv_timer_register(&self->reconnect_timer);
 }
 
-static LogTransport *
+/*static LogTransport *
 afsocket_dd_construct_transport(AFSocketDestDriver *self, gint fd)
 {
   return transport_mapper_construct_log_transport(self->transport_mapper, fd);
-}
+}*/
 
 static gboolean
 afsocket_dd_connected(AFSocketDestDriver *self)
@@ -244,7 +244,13 @@ afsocket_dd_connected(AFSocketDestDriver *self)
              evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf2, sizeof(buf2), GSA_FULL)),
              evt_tag_str("local", g_sockaddr_format(self->bind_addr, buf1, sizeof(buf1), GSA_FULL)));
 
-  transport = afsocket_dd_construct_transport(self, self->fd);
+
+  LogTransportFactory *transport_factory = transport_mapper_construct_log_transport_factory(self->transport_mapper);
+
+  transport = log_transport_factory_construct(transport_factory,
+                                              self->fd);//afsocket_dd_construct_transport(self, self->fd);
+  log_transport_factory_destroy(transport_factory);
+  g_free(transport_factory); //TODO
   if (!transport)
     goto error_reconnect;
 

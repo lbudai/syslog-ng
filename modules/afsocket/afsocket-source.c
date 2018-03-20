@@ -73,11 +73,11 @@ afsocket_sc_stats_instance(AFSocketSourceConnection *self)
   return buf;
 }
 
-static LogTransport *
-afsocket_sc_construct_transport(AFSocketSourceConnection *self, gint fd)
+/*static LogTransportFactory *
+afsocket_sc_construct_transport(AFSocketSourceConnection *self)
 {
-  return transport_mapper_construct_log_transport(self->owner->transport_mapper, fd);
-}
+  return transport_mapper_construct_log_transport_factory(self->owner->transport_mapper);
+}*/
 
 static gboolean
 afsocket_sc_init(LogPipe *s)
@@ -88,8 +88,12 @@ afsocket_sc_init(LogPipe *s)
 
   if (!self->reader)
     {
-      transport = afsocket_sc_construct_transport(self, self->sock);
+      LogTransportFactory *transport_factory = transport_mapper_construct_log_transport_factory(
+                                                 self->owner->transport_mapper);
+      transport = log_transport_factory_construct(transport_factory, self->sock);
       /* transport_mapper_inet_construct_log_transport() can return NULL on TLS errors */
+      log_transport_factory_destroy(transport_factory);
+      g_free(transport_factory); //TODO
       if (!transport)
         return FALSE;
 

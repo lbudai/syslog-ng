@@ -27,6 +27,8 @@
 #include "stats/stats-registry.h"
 #include "transport/transport-tls.h"
 #include "secret-storage/secret-storage.h"
+#include "socket-transport-factory.h"
+#include "tls-transport-factory.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -83,7 +85,7 @@ transport_mapper_inet_apply_transport_method(TransportMapper *s, GlobalConfig *c
   return transport_mapper_inet_validate_tls_options(self);
 }
 
-static LogTransport *
+/*static LogTransport *
 transport_mapper_inet_construct_log_transport(TransportMapper *s, gint fd)
 {
   TransportMapperInet *self = (TransportMapperInet *) s;
@@ -101,6 +103,24 @@ transport_mapper_inet_construct_log_transport(TransportMapper *s, gint fd)
     }
   else
     return transport_mapper_construct_log_transport_method(s, fd);
+}*/
+
+static LogTransportFactory *
+transport_mapper_inet_construct_transport_factory(TransportMapper *s)
+{
+  TransportMapperInet *self = (TransportMapperInet *) s;
+
+  if (self->tls_context)
+    {
+      return log_transport_tls_factory_new(self->tls_context, self->tls_verify_callback, self->tls_verify_data);
+    }
+  else
+    {
+      if (self->super.sock_type == SOCK_DGRAM)
+        return log_transport_socket_dgram_factory_new();
+      else
+        return log_transport_socket_stream_factory_new();
+    }
 }
 
 static gboolean
@@ -228,7 +248,8 @@ transport_mapper_inet_init_instance(TransportMapperInet *self, const gchar *tran
 {
   transport_mapper_init_instance(&self->super, transport);
   self->super.apply_transport = transport_mapper_inet_apply_transport_method;
-  self->super.construct_log_transport = transport_mapper_inet_construct_log_transport;
+//  self->super.construct_log_transport = transport_mapper_inet_construct_log_transport;
+  self->super.construct_log_transport_factory = transport_mapper_inet_construct_transport_factory;
   self->super.init = transport_mapper_inet_init;
   self->super.async_init = transport_mapper_inet_async_init;
   self->super.free_fn = transport_mapper_inet_free_method;

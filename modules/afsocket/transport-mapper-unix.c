@@ -24,6 +24,7 @@
 #include "transport-unix-socket.h"
 #include "unix-credentials.h"
 #include "stats/stats-registry.h"
+#include "unix-socket-transport-factory.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -37,26 +38,36 @@ struct _TransportMapperUnix
   gboolean pass_unix_credentials;
 };
 
-static LogTransport *
+/*static LogTransport *
 _create_log_transport(TransportMapper *s, gint fd)
 {
   if (s->sock_type == SOCK_DGRAM)
     return log_transport_unix_dgram_socket_new(fd);
   else
     return log_transport_unix_stream_socket_new(fd);
+}*/
+
+static LogTransportFactory *
+_construct_log_transport_factory(TransportMapper *s)
+{
+  TransportMapperUnix *self = (TransportMapperUnix *)s;
+  if (s->sock_type == SOCK_DGRAM)
+    return log_transport_unix_dgram_factory_new(self->pass_unix_credentials); // TODO: move pass cred. to sock
+  else
+    return log_transport_unix_stream_factory_new(self->pass_unix_credentials);
 }
 
-static LogTransport *
+/*static LogTransport *
 _construct_log_transport(TransportMapper *s, gint fd)
 {
   TransportMapperUnix *self = (TransportMapperUnix *) s;
   LogTransport *transport = _create_log_transport(s, fd);
 
   if (self->pass_unix_credentials)
-    socket_set_pass_credentials(fd);
+    socket_set_pass_credentials(fd); // IMHO this should not be done here...
 
   return transport;
-}
+}*/
 
 static TransportMapperUnix *
 transport_mapper_unix_new_instance(const gchar *transport, gint sock_type)
@@ -64,7 +75,8 @@ transport_mapper_unix_new_instance(const gchar *transport, gint sock_type)
   TransportMapperUnix *self = g_new0(TransportMapperUnix, 1);
 
   transport_mapper_init_instance(&self->super, transport);
-  self->super.construct_log_transport = _construct_log_transport;
+//  self->super.construct_log_transport = _construct_log_transport;
+  self->super.construct_log_transport_factory = _construct_log_transport_factory;
   self->super.address_family = AF_UNIX;
   self->super.sock_type = sock_type;
   return self;

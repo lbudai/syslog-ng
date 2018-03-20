@@ -35,7 +35,13 @@ modules_afsocket_libafsocket_la_SOURCES	=	\
 	modules/afsocket/afsocket-plugin.c    \
 	modules/afsocket/systemd-syslog-source.h       \
 	modules/afsocket/systemd-syslog-source.c	\
-	modules/afsocket/afsocket-systemd-override.h
+	modules/afsocket/afsocket-systemd-override.h \
+	modules/afsocket/socket-transport-factory.h \
+	modules/afsocket/socket-transport-factory.c \
+	modules/afsocket/tls-transport-factory.h \
+	modules/afsocket/tls-transport-factory.c \
+	modules/afsocket/unix-socket-transport-factory.h \
+	modules/afsocket/unix-socket-transport-factory.c
 
 module_LTLIBRARIES				+= modules/afsocket/libafsocket.la
 modules_afsocket_libafsocket_la_CPPFLAGS	=	\
