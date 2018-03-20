@@ -48,7 +48,7 @@ log_transport_devkmsg_new(gint fd)
 
 
 static LogTransport *
-_construct_devkmsg_transport(FileOpener *self, gint fd)
+_construct_devkmsg_transport(LogTransportFactory *self, gint fd)
 {
   return log_transport_devkmsg_new(fd);
 }
@@ -64,8 +64,9 @@ file_opener_for_devkmsg_new(void)
 {
   FileOpener *self = file_opener_new();
 
-  self->construct_transport = _construct_devkmsg_transport;
+  self->transport_factory.construct = _construct_devkmsg_transport;
   self->construct_src_proto = _construct_devkmsg_proto;
+
   return self;
 }
 
@@ -85,7 +86,7 @@ log_proto_linux_proc_kmsg_reader_new(LogTransport *transport, const LogProtoServ
 
 
 static LogTransport *
-_construct_prockmsg_transport(FileOpener *self, gint fd)
+_construct_prockmsg_transport(LogTransportFactory *self, gint fd)
 {
   return log_transport_prockmsg_new(fd, 10);
 }
@@ -101,7 +102,7 @@ file_opener_for_prockmsg_new(void)
 {
   FileOpener *self = file_opener_new();
 
-  self->construct_transport = _construct_prockmsg_transport;
+  self->transport_factory.construct = _construct_prockmsg_transport;
   self->construct_src_proto = _construct_prockmsg_proto;
   return self;
 }

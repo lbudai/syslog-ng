@@ -29,6 +29,7 @@
 
 #include "file-perms.h"
 #include "transport/logtransport.h"
+#include "transport/logtransport-factory.h"
 #include "logproto/logproto-server.h"
 #include "logproto/logproto-client.h"
 #include "logproto-file-reader.h"
@@ -54,7 +55,7 @@ struct _FileOpener
   gboolean (*prepare_open)(FileOpener *self, const gchar *name);
   gint (*open)(FileOpener *self, const gchar *name, gint flags);
   gint (*get_open_flags)(FileOpener *self, FileDirection dir);
-  LogTransport *(*construct_transport)(FileOpener *self, gint fd);
+  LogTransportFactory transport_factory;
   LogProtoServer *(*construct_src_proto)(FileOpener *self, LogTransport *transport,
                                          LogProtoFileReaderOptions *proto_options);
   LogProtoClient *(*construct_dst_proto)(FileOpener *self, LogTransport *transport, LogProtoClientOptions *proto_options);
@@ -63,7 +64,7 @@ struct _FileOpener
 static inline LogTransport *
 file_opener_construct_transport(FileOpener *self, gint fd)
 {
-  return self->construct_transport(self, fd);
+  return log_transport_factory_construct(&self->transport_factory, fd);
 }
 
 static inline LogProtoServer *

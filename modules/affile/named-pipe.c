@@ -77,7 +77,7 @@ _get_open_flags(FileOpener *self, FileDirection dir)
 }
 
 static LogTransport *
-_construct_transport(FileOpener *self, gint fd)
+_construct_transport(LogTransportFactory *self, gint fd)
 {
   LogTransport *transport = log_transport_pipe_new(fd);
 
@@ -104,7 +104,7 @@ file_opener_for_named_pipes_new(void)
 
   self->prepare_open = _prepare_open;
   self->get_open_flags = _get_open_flags;
-  self->construct_transport = _construct_transport;
+  self->transport_factory.construct = _construct_transport;
   self->construct_src_proto = _construct_src_proto;
   self->construct_dst_proto = _construct_dst_proto;
   return self;

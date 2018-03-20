@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 static LogTransport *
-_construct_transport(FileOpener *self, gint fd)
+_construct_transport(LogTransportFactory *self, gint fd)
 {
   return log_transport_file_new(fd);
 }
@@ -49,7 +49,7 @@ file_opener_for_stdin_new(void)
 {
   FileOpener *self = file_opener_new();
 
-  self->construct_transport = _construct_transport;
+  self->transport_factory.construct = _construct_transport;
   self->construct_src_proto = _construct_src_proto;
   self->open = _open;
   return self;
