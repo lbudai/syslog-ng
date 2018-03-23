@@ -28,6 +28,8 @@
 #include "logproto.h"
 #include "persist-state.h"
 #include "transport/transport-aux-data.h"
+#include "transport/logtransport-factory.h"
+#include "transport/multitransport-factory.h"
 #include "bookmark.h"
 
 typedef struct _LogProtoServer LogProtoServer;
@@ -144,6 +146,7 @@ void log_proto_server_free(LogProtoServer *s);
   {                                                                     \
     static LogProtoServerFactory proto = {                              \
       .construct = prefix ## _server_new,                       \
+      .construct_multi_transport = prefix ## _server_multi_transport_new, \
     };                                                                  \
     return &proto;                                                      \
   }
@@ -160,6 +163,8 @@ typedef struct _LogProtoServerFactory LogProtoServerFactory;
 struct _LogProtoServerFactory
 {
   LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options);
+  LogProtoServer *(*construct_multi_transport)(MultiTransportFactory *multitransport_factory,
+                                               const LogProtoServerOptions *options);
 };
 
 static inline LogProtoServer *
@@ -167,6 +172,14 @@ log_proto_server_factory_construct(LogProtoServerFactory *self, LogTransport *tr
                                    const LogProtoServerOptions *options)
 {
   return self->construct(transport, options);
+}
+
+static inline LogProtoServer *
+log_proto_server_factory_construct_multi_transport(LogProtoServerFactory *self,
+                                                   MultiTransportFactory *multitransport_factory,
+                                                   const LogProtoServerOptions *options)
+{
+  return self->construct_multi_transport(multitransport_factory, options);
 }
 
 LogProtoServerFactory *log_proto_server_get_factory(PluginContext *context, const gchar *name);

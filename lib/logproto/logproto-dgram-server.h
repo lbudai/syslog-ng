@@ -33,5 +33,7 @@
  * message, regardless of embedded EOL/NUL characters.
  */
 LogProtoServer *log_proto_dgram_server_new(LogTransport *transport, const LogProtoServerOptions *options);
+LogProtoServer *log_proto_dgram_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
+                                                           const LogProtoServerOptions *options);
 
 #endif

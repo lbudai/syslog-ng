@@ -41,6 +41,10 @@ struct _LogProtoIMultiLineServer
  */
 LogProtoServer *log_proto_indented_multiline_server_new(LogTransport *transport,
                                                         const LogProtoServerOptions *options);
+
+LogProtoServer *log_proto_indented_multiline_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
+    const LogProtoServerOptions *options);
+
 void log_proto_indented_multiline_server_init(LogProtoIMultiLineServer *self,
                                               LogTransport *transport,
                                               const LogProtoServerOptions *options);

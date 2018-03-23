@@ -23,6 +23,7 @@
  */
 #include "logproto-dgram-server.h"
 #include "logproto-buffered-server.h"
+#include "messages.h"
 
 /* proto that reads the input in datagrams (e.g. the underlying transport
  * determines record sizes, such as UDP) */
@@ -57,4 +58,12 @@ log_proto_dgram_server_new(LogTransport *transport, const LogProtoServerOptions 
   self->super.fetch_from_buffer = log_proto_dgram_server_fetch_from_buffer;
   self->super.stream_based = FALSE;
   return &self->super.super;
+}
+
+LogProtoServer *
+log_proto_dgram_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
+                                           const LogProtoServerOptions *options)
+{
+  msg_error("Multi transport constructor not supported in LogProtoDgramServer");
+  return NULL;
 }

@@ -289,3 +289,11 @@ log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions
   self->half_message_in_buffer = FALSE;
   return &self->super;
 }
+
+LogProtoServer *
+log_proto_framed_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
+                                            const LogProtoServerOptions *options)
+{
+  msg_error("Multi transport constructor not supported in LogProtoFramedServer");
+  return NULL;
+}

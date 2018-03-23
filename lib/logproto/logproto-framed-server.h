@@ -27,5 +27,7 @@
 #include "logproto-server.h"
 
 LogProtoServer *log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options);
+LogProtoServer *log_proto_framed_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
+                                                            const LogProtoServerOptions *options);
 
 #endif
