@@ -60,10 +60,3 @@ log_proto_dgram_server_new(LogTransport *transport, const LogProtoServerOptions 
   return &self->super.super;
 }
 
-LogProtoServer *
-log_proto_dgram_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
-                                           const LogProtoServerOptions *options)
-{
-  msg_error("Multi transport constructor not supported in LogProtoDgramServer");
-  return NULL;
-}

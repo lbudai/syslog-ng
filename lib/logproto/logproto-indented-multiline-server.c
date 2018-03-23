@@ -89,11 +89,3 @@ log_proto_indented_multiline_server_new(LogTransport *transport, const LogProtoS
   log_proto_indented_multiline_server_init(self, transport, options);
   return &self->super.super.super;
 }
-
-LogProtoServer *
-log_proto_indented_multiline_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
-                                                        const LogProtoServerOptions *options)
-{
-  msg_error("Multi transport constructor not supported in LogProtoIndentedMultilineServer");
-  return NULL;
-}

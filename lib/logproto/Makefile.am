@@ -14,7 +14,8 @@ logprotoinclude_HEADERS = \
 	lib/logproto/logproto-multiline-server.h \
 	lib/logproto/logproto-record-server.h \
 	lib/logproto/logproto-builtins.h	\
-	lib/logproto/logproto.h
+	lib/logproto/logproto.h \
+	lib/logproto/logproto-multitransport-server.h
 
 logproto_sources = \
 	lib/logproto/logproto-client.c	\
@@ -29,6 +30,7 @@ logproto_sources = \
 	lib/logproto/logproto-regexp-multiline-server.c \
 	lib/logproto/logproto-multiline-server.c \
 	lib/logproto/logproto-record-server.c \
-	lib/logproto/logproto-builtins.c
+	lib/logproto/logproto-builtins.c \
+	lib/logproto/logproto-multitransport-server.c
 
 include lib/logproto/tests/Makefile.am

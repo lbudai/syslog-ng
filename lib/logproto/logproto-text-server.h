@@ -63,8 +63,6 @@ struct _LogProtoTextServer
  */
 LogProtoServer *log_proto_text_server_new(LogTransport *transport, const LogProtoServerOptions *options);
 
-LogProtoServer *log_proto_text_server_multi_transport_new(MultiTransportFactory *multitransport_factory,
-                                                          const LogProtoServerOptions *options);
 void log_proto_text_server_init(LogProtoTextServer *self, LogTransport *transport,
                                 const LogProtoServerOptions *options);
 
