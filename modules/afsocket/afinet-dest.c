@@ -130,6 +130,27 @@ afinet_dd_add_failovers(LogDriver *s, GList *failovers)
   self->current_server_candidate = NULL;
 }
 
+void
+afinet_dd_set_failback_mode(LogDriver *s, gboolean enable)
+{
+  AFInetDestDriver *self = (AFInetDestDriver *)s;
+  self->is_failback_mode = enable;
+}
+
+void
+afinet_dd_set_failback_tcp_probe_interval(LogDriver *s, gint tcp_probe_interval)
+{
+  AFInetDestDriver *self = (AFInetDestDriver *)s;
+  self->tcp_probe_interval = tcp_probe_interval;
+}
+
+void
+afinet_dd_set_failback_successfull_probes_required(LogDriver *s, gint successfull_probes_required)
+{
+  AFInetDestDriver *self = (AFInetDestDriver *)s;
+  self->successfull_probes_required = successfull_probes_required;
+}
+
 static gchar *
 _current_server_candidate_hostname(AFInetDestDriver *self)
 {
@@ -293,6 +314,12 @@ afinet_dd_init(LogPipe *s)
         }
     }
 #endif
+
+  if (self->tcp_probe_interval == -1)
+    self->tcp_probe_interval = 60;
+  
+  if (self->successfull_probes_required == -1)
+    self->successfull_probes_required = 3;
 
   return TRUE;
 }
@@ -508,6 +535,10 @@ afinet_dd_new_instance(TransportMapper *transport_mapper, gchar *hostname, Globa
   self->super.get_dest_name = afinet_dd_get_dest_name;
 
   self->hostname = g_strdup(hostname);
+
+  self->tcp_probe_interval = -1;
+  self->successfull_probes_required = -1;
+  self->is_failback_mode = FALSE;
 
 #if SYSLOG_NG_ENABLE_SPOOF_SOURCE
   g_static_mutex_init(&self->lnet_lock);
