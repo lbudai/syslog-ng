@@ -39,6 +39,7 @@ public class HttpSingleMessageProcessor extends  HttpMessageProcessor {
 
 	@Override
 	public boolean send(Index req) {
+		boolean result = true;
 	  JestResult jestResult = null;
 		try {
 			jestResult = client.getClient().execute(req);
@@ -46,13 +47,13 @@ public class HttpSingleMessageProcessor extends  HttpMessageProcessor {
 		catch (IOException e)
 		{
 			logger.error(e.getMessage());
-			return false;
+			result = false;
 		}
 		if (! jestResult.isSucceeded()) {
 			logger.error(jestResult.getErrorMessage());
-			return false;
+			result = false;
 		}
-		return true;
+		return result;
 	}
 
 }

@@ -26,7 +26,6 @@ package org.syslog_ng.elasticsearch_v2.messageprocessor.http;
 
 import io.searchbox.core.Bulk;
 import io.searchbox.core.Index;
-import io.searchbox.client.JestResult;
 import org.syslog_ng.elasticsearch_v2.ElasticSearchOptions;
 import org.syslog_ng.elasticsearch_v2.client.http.ESHttpClient;
 
@@ -40,41 +39,34 @@ public class HttpBulkMessageProcessor extends  HttpMessageProcessor {
 
 	public HttpBulkMessageProcessor(ElasticSearchOptions options, ESHttpClient client) {
 		super(options, client);
-		bulk = new Bulk.Builder();
 	}
 	@Override
 	public void init() {
+		bulk = new Bulk.Builder();
+		messageCounter = 0;
 		flushLimit = options.getFlushLimit();
 	}
 
 	@Override
-	public boolean flush() {
-		JestResult jestResult = null;
+	public void flush() {
 		logger.debug("Flushing messages for ES destination [mode=" + options.getClientMode() + "]");
 		Bulk bulkActions = bulk.build();
 		try {
-			jestResult = client.getClient().execute(bulkActions);
+			client.getClient().execute(bulkActions);
 		}
 		catch (IOException e)
 		{
 			logger.error(e.getMessage());
-			return false;
-		}
-		if (! jestResult.isSucceeded()) {
-			logger.error(jestResult.getErrorMessage());
-			return false;
 		}
 		bulk = new Bulk.Builder();
 		messageCounter = 0;
-		return true;
 	}
 
 	@Override
 	public boolean send(Index index) {
 		if (messageCounter >= flushLimit)
 		{
-			if (!flush())
-				return false;
+			flush();
 		}
 		bulk = bulk.addAction(index);
 		messageCounter++;
