@@ -456,6 +456,7 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   self->threaded = threaded;
   self->pos_tracked = pos_tracked;
   self->super.expr_node = expr_node;
+  self->max_memory = options->max_memory;
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
 

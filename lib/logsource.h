@@ -28,6 +28,7 @@
 #include "logpipe.h"
 #include "stats/stats-registry.h"
 #include "window-size-counter.h"
+#include "atomic-gssize.h"
 
 typedef struct _LogSourceOptions
 {
@@ -73,6 +74,8 @@ struct _LogSource
   StatsCounterItem *recvd_messages;
   guint32 last_ack_count;
   guint32 ack_count;
+  atomic_gssize memory_usage;
+  gsize max_memory;
   glong window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
   AckTracker *ack_tracker;
@@ -80,6 +83,46 @@ struct _LogSource
   void (*wakeup)(LogSource *s);
   void (*window_empty_cb)(LogSource *s);
 };
+
+static inline void
+log_source_increment_memory_usage(LogSource *self, gsize value)
+{
+  if (self->max_memory == 0)
+    return;
+
+  gsize old = (gsize)atomic_gssize_add(&self->memory_usage, value);
+  if (old >= self->max_memory)
+    {
+      msg_warning("max-memory has been reached, suspend source",
+          log_pipe_location_tag(&self->super),
+          evt_tag_int("max-memory", self->max_memory),
+          evt_tag_int("current-memory", old));
+      window_size_counter_suspend(&self->window_size);
+    }
+}
+
+static inline void
+log_source_decrement_memory_usage(LogSource *self, gsize value)
+{
+  if (self->max_memory == 0)
+    return;
+
+  gsize old = (gsize)atomic_gssize_sub(&self->memory_usage, value);
+  if (old + value >= self->max_memory && old < self->max_memory) //TODO
+    {
+      msg_warning("memory usage below under limit, resume source",
+          log_pipe_location_tag(&self->super),
+          evt_tag_int("max-memory", self->max_memory),
+          evt_tag_int("current-memory", old));
+      window_size_counter_resume(&self->window_size);
+    }
+}
+
+static inline gboolean
+log_source_max_memory_limit_reached(LogSource *self)
+{
+  return atomic_gssize_get(&self->memory_usage) >= self->max_memory;
+}
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)
