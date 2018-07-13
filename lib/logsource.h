@@ -47,6 +47,7 @@ typedef struct _LogSourceOptions
   GList *source_queue_callbacks;
   gint stats_level;
   gint stats_source;
+  gsize memory_limit;
 } LogSourceOptions;
 
 typedef struct _LogSource LogSource;
