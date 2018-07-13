@@ -125,6 +125,7 @@ static CfgLexerKeyword main_keywords[] =
   { "threaded",           KW_THREADED },
   { "use_rcptid",         KW_USE_RCPTID, KWS_OBSOLETE, "This has been deprecated, try use_uniqid() instead" },
   { "use_uniqid",         KW_USE_UNIQID },
+  { "window_mem_limit",   KW_WINDOW_MEM_LIMIT },
 
   { "log_fifo_size",      KW_LOG_FIFO_SIZE },
   { "log_fetch_limit",    KW_LOG_FETCH_LIMIT },
