@@ -191,11 +191,7 @@ log_queue_fifo_move_input_unlocked(LogQueueFifo *self, gint thread_id)
       path_options.flow_control_requested = node->flow_control_requested;
       stats_counter_inc(self->super.dropped_messages);
       log_msg_free_queue_node(node);
-      if (path_options.flow_control_requested)
-        {
-          log_msg_drop(msg, &path_options, AT_SUSPENDED);
-        }
-      else
+      if (!path_options.flow_control_requested)
         {
           msg_debug("Source of the logmsg reached memory limit, dropping messages",
                 log_pipe_location_tag(log_msg_get_source(msg)),
