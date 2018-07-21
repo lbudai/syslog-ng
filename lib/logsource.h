@@ -84,58 +84,6 @@ struct _LogSource
   void (*window_empty_cb)(LogSource *s);
 };
 
-static inline void
-log_source_increment_memory_usage(LogSource *self, gsize value)
-{
-  if (self->max_memory == 0)
-    return;
-
-  gsize old = (gsize)atomic_gssize_add(&self->memory_usage, value);
-  if (old >= self->max_memory)
-    {
-      msg_warning("max-memory has been reached, suspend source",
-          log_pipe_location_tag(&self->super),
-          evt_tag_int("max-memory", self->max_memory),
-          evt_tag_int("current-memory", old));
-      window_size_counter_suspend(&self->window_size);
-    }
-}
-
-static inline void
-log_source_decrement_memory_usage(LogSource *self, gsize value)
-{
-  if (self->max_memory == 0)
-    return;
-
-  gsize old = (gsize)atomic_gssize_sub(&self->memory_usage, value);
-  if (old + value >= self->max_memory && old < self->max_memory) //TODO
-    {
-      msg_warning("memory usage below under limit, resume source",
-          log_pipe_location_tag(&self->super),
-          evt_tag_int("max-memory", self->max_memory),
-          evt_tag_int("current-memory", old));
-      window_size_counter_resume(&self->window_size);
-    }
-}
-
-static inline gboolean
-log_source_max_memory_limit_reached(LogSource *self)
-{
-  return atomic_gssize_get(&self->memory_usage) >= self->max_memory;
-}
-
-static inline gboolean
-log_source_free_to_send(LogSource *self)
-{
-  return !window_size_counter_suspended(&self->window_size);
-}
-
-static inline gint
-log_source_get_init_window_size(LogSource *self)
-{
-  return self->options->init_window_size;
-}
-
 gboolean log_source_init(LogPipe *s);
 gboolean log_source_deinit(LogPipe *s);
 
@@ -155,7 +103,70 @@ void log_source_window_empty(LogSource *self);
 void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_suspend(LogSource *self);
-
 void log_source_global_init(void);
+
+
+static inline void
+log_source_increment_memory_usage(LogSource *self, gsize value)
+{
+  if (self->max_memory == 0)
+    return;
+
+  gsize old = (gsize)atomic_gssize_add(&self->memory_usage, value);
+  msg_trace("memory.inc",
+            evt_tag_int("max-memory", self->max_memory),
+            evt_tag_int("current-memory", old),
+            evt_tag_int("increment", value));
+  if (old + value >= self->max_memory)
+    {
+      msg_debug("max-memory has been reached, suspend source",
+                log_pipe_location_tag(&self->super),
+                evt_tag_int("max-memory", self->max_memory),
+                evt_tag_int("current-memory", old));
+      window_size_counter_suspend(&self->window_size);
+    }
+}
+
+static inline void
+log_source_decrement_memory_usage(LogSource *self, gsize value)
+{
+  if (self->max_memory == 0)
+    return;
+
+  gsize old = (gsize)atomic_gssize_sub(&self->memory_usage, value);
+  msg_trace("memory.dec",
+            evt_tag_int("max-memory", self->max_memory),
+            evt_tag_int("current-memory", old),
+            evt_tag_int("decrement", value));
+
+  if (old - value < self->max_memory || old < self->max_memory)
+    {
+      msg_debug("memory usage below under limit, resume source",
+                log_pipe_location_tag(&self->super),
+                evt_tag_int("max-memory", self->max_memory),
+                evt_tag_int("current-memory", old));
+      window_size_counter_resume(&self->window_size);
+      log_source_wakeup(self);
+    }
+}
+
+static inline gboolean
+log_source_max_memory_limit_reached(LogSource *self)
+{
+  return atomic_gssize_get(&self->memory_usage) >= self->max_memory;
+}
+
+static inline gboolean
+log_source_free_to_send(LogSource *self)
+{
+  return !window_size_counter_suspended(&self->window_size);
+//  return !log_source_max_memory_limit_reached(self); TODO
+}
+
+static inline gint
+log_source_get_init_window_size(LogSource *self)
+{
+  return self->options->init_window_size;
+}
 
 #endif

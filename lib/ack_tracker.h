@@ -76,11 +76,15 @@ static inline void
 ack_tracker_track_msg(AckTracker *self, LogMessage *msg)
 {
   self->track_msg(self, msg);
+  msg_trace("ack_tracker_track_msg", evt_tag_int("allocated bytes", msg->allocated_bytes));
+  log_source_increment_memory_usage(msg->ack_record->tracker->source, msg->allocated_bytes);
 }
 
 static inline void
 ack_tracker_manage_msg_ack(AckTracker *self, LogMessage *msg, AckType ack_type)
 {
+  msg_trace("ack_tracker_manage_msg_ack", evt_tag_int("allocated bytes", msg->allocated_bytes));
+  log_source_decrement_memory_usage(msg->ack_record->tracker->source, msg->allocated_bytes);
   self->manage_msg_ack(self, msg, ack_type);
 }
 
