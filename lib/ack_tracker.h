@@ -45,7 +45,7 @@ struct _AckRecord
   AckTracker *tracker;
 };
 
-AckTracker *late_ack_tracker_new(gint init_window_size);
+AckTracker *late_ack_tracker_new(void);
 AckTracker *early_ack_tracker_new(void);
 
 static inline void

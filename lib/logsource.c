@@ -432,7 +432,7 @@ _create_ack_tracker_if_not_exists(LogSource *self, gboolean pos_tracked)
   if (!self->ack_tracker)
     {
       if (pos_tracked)
-        self->ack_tracker = late_ack_tracker_new(log_source_get_init_window_size(self));
+        self->ack_tracker = late_ack_tracker_new();
       else
         self->ack_tracker = early_ack_tracker_new();
     }
