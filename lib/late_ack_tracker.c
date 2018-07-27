@@ -24,7 +24,7 @@
 
 #include "late_ack_tracker.h"
 #include "bookmark.h"
-#include "ringbuffer.h"
+#include "logsource.h"
 #include "syslog-ng.h"
 
 typedef struct _LateAckRecord
@@ -106,13 +106,13 @@ static void
 late_ack_tracker_track_msg(AckTracker *s, LogMessage *msg)
 {
   LateAckTracker *self = (LateAckTracker *)s;
-  LogSource *source = self->super.source;
-
-  log_pipe_ref((LogPipe *)source);
 
   late_ack_tracker_lock(s);
   {
     g_assert(self->pending_ack_record != NULL);
+
+    self->pending_ack_record->bookmark.persist_state = msg->source->super.cfg->state;
+
     msg->ack_record = (AckRecord *)self->pending_ack_record;
     self->ack_record_storage = g_list_prepend(self->ack_record_storage, msg->ack_record);
     if (!self->ack_record_storage_tail)
@@ -132,7 +132,7 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
   guint32 ack_range_length = 0;
 
   if (ack_type == AT_SUSPENDED)
-    log_source_flow_control_suspend(self->super.source);
+    log_source_flow_control_suspend(msg->source);
 
   late_ack_tracker_lock(s);
   {
@@ -183,19 +183,15 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
             g_list_free_full(continuous_range_head, g_free);
           }
         if (ack_type == AT_SUSPENDED)
-          log_source_flow_control_adjust(self->super.source); //TODO: check
+          log_source_flow_control_adjust(msg->source); //TODO: check
         else
-          log_source_flow_control_adjust(self->super.source);
+          log_source_flow_control_adjust(msg->source);
 
         if (!self->ack_record_storage || g_list_length(self->ack_record_storage) == 0)
           late_ack_tracker_on_all_acked_call(s);
       }
   }
   late_ack_tracker_unlock(s);
-
-  log_msg_unref(msg);
-
-  log_pipe_unref((LogPipe *)self->super.source);
 }
 
 
@@ -226,7 +222,7 @@ late_ack_tracker_request_bookmark(AckTracker *s)
 
     if (self->pending_ack_record)
       {
-        self->pending_ack_record->bookmark.persist_state = s->source->super.cfg->state;
+        //self->pending_ack_record->bookmark.persist_state = s->source->super.cfg->state;
 
         self->pending_ack_record->super.tracker = (AckTracker *)self;
         late_ack_tracker_unlock(s);
@@ -240,11 +236,9 @@ late_ack_tracker_request_bookmark(AckTracker *s)
 }
 
 static void
-late_ack_tracker_init_instance(LateAckTracker *self, LogSource *source)
+late_ack_tracker_init_instance(LateAckTracker *self)
 {
   self->super.late = TRUE;
-  self->super.source = source;
-  source->ack_tracker = (AckTracker *)self;
   self->super.request_bookmark = late_ack_tracker_request_bookmark;
   self->super.track_msg = late_ack_tracker_track_msg;
   self->super.manage_msg_ack = late_ack_tracker_manage_msg_ack;
@@ -254,11 +248,11 @@ late_ack_tracker_init_instance(LateAckTracker *self, LogSource *source)
 }
 
 AckTracker *
-late_ack_tracker_new(LogSource *source)
+late_ack_tracker_new(void)
 {
   LateAckTracker *self = g_new0(LateAckTracker, 1);
 
-  late_ack_tracker_init_instance(self, source);
+  late_ack_tracker_init_instance(self);
 
   return (AckTracker *)self;
 }

@@ -131,7 +131,8 @@ static void
 log_source_msg_ack(LogMessage *msg, AckType ack_type)
 {
   AckTracker *ack_tracker = msg->ack_record->tracker;
-  ack_tracker_manage_msg_ack(ack_tracker, msg, ack_type);
+  ack_tracker_manage_msg_ack(ack_tracker, msg,
+                             ack_type); //TODO:source_manage_ack... : store only LogSource in LogMessage
 }
 
 void
@@ -234,6 +235,10 @@ void
 log_source_post(LogSource *self, LogMessage *msg)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  msg->source = (LogSource *)log_pipe_ref(&self->super);
+  log_source_increment_memory_usage(self, msg->allocated_bytes);//TODO: LogMessage as 2nd parameter?
+  msg_trace("log_source_post", evt_tag_int("allocated bytes", msg->allocated_bytes));
 
   ack_tracker_track_msg(self->ack_tracker, msg);
 
@@ -380,9 +385,9 @@ _create_ack_tracker_if_not_exists(LogSource *self, gboolean pos_tracked)
   if (!self->ack_tracker)
     {
       if (pos_tracked)
-        self->ack_tracker = late_ack_tracker_new(self);
+        self->ack_tracker = late_ack_tracker_new();
       else
-        self->ack_tracker = early_ack_tracker_new(self);
+        self->ack_tracker = early_ack_tracker_new();
     }
 }
 

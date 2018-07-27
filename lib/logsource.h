@@ -127,7 +127,7 @@ log_source_increment_memory_usage(LogSource *self, gsize value)
 static inline void
 log_source_decrement_memory_usage(LogSource *self, gsize value)
 {
-  if (self->max_memory == 0)
+  if (!self || self->max_memory == 0)
     return;
 
   gsize old = (gsize)atomic_gssize_sub(self->memory_usage, value);

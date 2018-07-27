@@ -26,12 +26,12 @@
 #define ACK_TRACKER_H_INCLUDED
 
 #include "syslog-ng.h"
-#include "logsource.h"
+#include "logmsg/logmsg.h"
+#include "messages.h"
 
 struct _AckTracker
 {
   gboolean late;
-  LogSource *source;
   Bookmark *(*request_bookmark)(AckTracker *self);
   void (*track_msg)(AckTracker *self, LogMessage *msg);
   void (*manage_msg_ack)(AckTracker *self, LogMessage *msg, AckType ack_type);
@@ -42,8 +42,8 @@ struct _AckRecord
   AckTracker *tracker;
 };
 
-AckTracker *late_ack_tracker_new(LogSource *source);
-AckTracker *early_ack_tracker_new(LogSource *source);
+AckTracker *late_ack_tracker_new(void);
+AckTracker *early_ack_tracker_new(void);
 
 void late_ack_tracker_free(AckTracker *self);
 void early_ack_tracker_free(AckTracker *self);
@@ -75,10 +75,8 @@ ack_tracker_request_bookmark(AckTracker *self)
 static inline void
 ack_tracker_track_msg(AckTracker *self, LogMessage *msg)
 {
-  msg->source = log_pipe_ref(&self->source->super);
-  self->track_msg(self, msg);
   msg_trace("ack_tracker_track_msg", evt_tag_int("allocated bytes", msg->allocated_bytes));
-  log_source_increment_memory_usage(msg->ack_record->tracker->source, msg->allocated_bytes);
+  self->track_msg(self, msg);
 }
 
 static inline void
@@ -86,6 +84,7 @@ ack_tracker_manage_msg_ack(AckTracker *self, LogMessage *msg, AckType ack_type)
 {
   msg_trace("ack_tracker_manage_msg_ack", evt_tag_int("allocated bytes", msg->allocated_bytes));
   self->manage_msg_ack(self, msg, ack_type);
+  log_msg_unref(msg);
 }
 
 #endif

@@ -38,6 +38,7 @@
 #include "template/macros.h"
 #include "host-id.h"
 #include "ack_tracker.h"
+#include "logsource.h"
 
 #include <glib/gprintf.h>
 #include <sys/types.h>
@@ -170,15 +171,15 @@ TLS_BLOCK_END;
 static void
 _increment_source_memory_usage(LogMessage *self, gsize value)
 {
-  if (self->ack_record)
-    log_source_increment_memory_usage(self->ack_record->tracker->source, value);
+  if (self->source)
+    log_source_increment_memory_usage(self->source, value);
 }
 
 static void
 _decrement_source_memory_usage(LogMessage *self, gsize value)
 {
-  if (self->ack_record)
-    log_source_decrement_memory_usage(self->ack_record->tracker->source, value);
+  if (self->source)
+    log_source_decrement_memory_usage(self->source, value);
 }
 
 static inline gboolean
@@ -1393,6 +1394,8 @@ log_msg_free(LogMessage *self)
 
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
   log_source_decrement_memory_usage(self->source, self->allocated_bytes);
+  msg_trace("ack_tracker_manage_msg_ack", evt_tag_int("allocated bytes", self->allocated_bytes));
+
   log_pipe_unref(&self->source->super);
 
   g_free(self);
@@ -1890,8 +1893,8 @@ gssize log_msg_get_size(LogMessage *self)
 LogSource *
 log_msg_get_source(LogMessage *msg)
 {
-  if (msg->ack_record)
-    return msg->ack_record->tracker->source;
+  if (msg->source)
+    return msg->source;
 
   if (msg->original)
     return log_msg_get_source(msg->original);
