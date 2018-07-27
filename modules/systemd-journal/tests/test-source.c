@@ -34,6 +34,7 @@ struct _TestSource
   GList *tests;
   GList *current_test;
   TestCase *current_test_case;
+  atomic_gssize window_mem_limit;
 
   struct iv_task start;
   struct iv_task stop;
@@ -44,7 +45,7 @@ static gboolean
 __init(LogPipe *s)
 {
   TestSource *self = (TestSource *)s;
-  self->reader = journal_reader_new(configuration, self->journald_mock);
+  self->reader = journal_reader_new(configuration, self->journald_mock, &self->window_mem_limit);
   journal_reader_options_defaults(&self->options);
   if (self->current_test_case && self->current_test_case->init)
     {

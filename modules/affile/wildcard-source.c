@@ -237,7 +237,6 @@ _on_directory_monitor_changed(const DirectoryMonitorEvent *event, gpointer user_
 static void
 _init_reader_options(WildcardSourceDriver *self, GlobalConfig *cfg)
 {
-  //TODO: use shared atomic counter for memory usage
   file_reader_options_init(&self->file_reader_options, cfg, self->super.super.group);
 }
 

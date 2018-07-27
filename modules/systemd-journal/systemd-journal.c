@@ -51,7 +51,7 @@ __init(LogPipe *s)
   if (!log_src_driver_init_method(s))
     return FALSE;
 
-  self->reader = journal_reader_new(cfg, self->journald);
+  self->reader = journal_reader_new(cfg, self->journald, &self->super.memory_usage);
 
   journal_reader_options_init(&self->reader_options, cfg, self->super.super.group);
 
