@@ -40,7 +40,6 @@ typedef struct _WildcardSourceDriver
   MonitorMethod monitor_method;
   guint32 max_files;
 
-  gboolean window_size_initialized;
   gboolean recursive;
 
   FileReaderOptions file_reader_options;

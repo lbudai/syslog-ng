@@ -129,7 +129,6 @@ static CfgLexerKeyword main_keywords[] =
 
   { "log_fifo_size",      KW_LOG_FIFO_SIZE },
   { "log_fetch_limit",    KW_LOG_FETCH_LIMIT },
-  { "log_iw_size",        KW_LOG_IW_SIZE },
   { "log_msg_size",       KW_LOG_MSG_SIZE },
   { "log_prefix",         KW_LOG_PREFIX, KWS_OBSOLETE, "program_override" },
   { "program_override",   KW_PROGRAM_OVERRIDE },
