@@ -142,6 +142,7 @@ struct _LogSrcDriver
   LogDriver super;
   gint group_len;
   StatsCounterItem *received_global_messages;
+  atomic_gssize memory_usage;
 };
 
 gboolean log_src_driver_init_method(LogPipe *s);

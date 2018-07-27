@@ -58,7 +58,7 @@ void log_reader_set_peer_addr(LogReader *s, GSockAddr *peer_addr);
 void log_reader_set_immediate_check(LogReader *s);
 void log_reader_reopen(LogReader *s, LogProtoServer *proto, PollEvents *poll_events);
 void log_reader_close_proto(LogReader *s);
-LogReader *log_reader_new(GlobalConfig *cfg);
+LogReader *log_reader_new(GlobalConfig *cfg, atomic_gssize *memory_usage_counter);
 
 void log_reader_options_defaults(LogReaderOptions *options);
 void log_reader_options_init(LogReaderOptions *options, GlobalConfig *cfg, const gchar *group_name);

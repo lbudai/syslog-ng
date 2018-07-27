@@ -72,12 +72,11 @@ struct _LogSource
   StatsCounterItem *recvd_messages;
   guint32 last_ack_count;
   guint32 ack_count;
-  atomic_gssize window_mem_usage;
+  atomic_gssize *window_mem_usage;
   gsize window_mem_limit;
   glong window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
   AckTracker *ack_tracker;
-
   void (*wakeup)(LogSource *s);
   void (*window_empty_cb)(LogSource *s);
 };
@@ -90,7 +89,7 @@ void log_source_post(LogSource *self, LogMessage *msg);
 void log_source_set_options(LogSource *self, LogSourceOptions *options, const gchar *stats_id,
                             const gchar *stats_instance, gboolean threaded, gboolean pos_tracked, LogExprNode *expr_node);
 void log_source_mangle_hostname(LogSource *self, LogMessage *msg);
-void log_source_init_instance(LogSource *self, GlobalConfig *cfg);
+void log_source_init_instance(LogSource *self, GlobalConfig *cfg, atomic_gssize *window_mem_usage);
 void log_source_options_defaults(LogSourceOptions *options);
 void log_source_options_init(LogSourceOptions *options, GlobalConfig *cfg, const gchar *group_name);
 void log_source_options_destroy(LogSourceOptions *options);
@@ -110,7 +109,7 @@ log_source_increment_window_mem_usage(LogSource *self, gsize value)
   if (!self || self->window_mem_limit == 0)
     return;
 
-  gsize old = (gsize)atomic_gssize_add(&self->window_mem_usage, value);
+  gsize old = (gsize)atomic_gssize_add(self->window_mem_usage, value);
   msg_trace("window_mem_usage.inc",
             evt_tag_long("window_mem_limit", self->window_mem_limit),
             evt_tag_long("window_mem_usage", old),
@@ -132,7 +131,7 @@ log_source_decrement_window_mem_usage(LogSource *self, gsize value)
   if (!self || self->window_mem_limit == 0)
     return;
 
-  gsize old = (gsize)atomic_gssize_sub(&self->window_mem_usage, value);
+  gsize old = (gsize)atomic_gssize_sub(self->window_mem_usage, value);
   msg_trace("window_mem_usage.dec",
             evt_tag_long("window_mem_limit", self->window_mem_limit),
             evt_tag_long("window_mem_usage", old),
@@ -156,7 +155,7 @@ log_source_decrement_window_mem_usage(LogSource *self, gsize value)
 static inline gboolean
 log_source_window_mem_limit_reached(LogSource *self)
 {
-  return atomic_gssize_get(&self->window_mem_usage) >= self->window_mem_limit;
+  return atomic_gssize_get(self->window_mem_usage) >= self->window_mem_limit;
 }
 
 static inline gboolean

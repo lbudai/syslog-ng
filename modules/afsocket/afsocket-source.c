@@ -101,7 +101,7 @@ afsocket_sc_init(LogPipe *s)
           return FALSE;
         }
 
-      self->reader = log_reader_new(s->cfg);
+      self->reader = log_reader_new(s->cfg, &self->owner->super.memory_usage);
       log_reader_reopen(self->reader, proto, poll_fd_events_new(self->sock));
       log_reader_set_peer_addr(self->reader, self->peer_addr);
     }

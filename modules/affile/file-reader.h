@@ -42,6 +42,7 @@ typedef struct _FileReader
   FileReaderOptions *options;
   FileOpener *opener;
   LogReader *reader;
+  atomic_gssize memory_usage;
 } FileReader;
 
 static inline LogProtoFileReaderOptions *

@@ -680,10 +680,10 @@ _init_watches(JournalReader *self)
 }
 
 JournalReader *
-journal_reader_new(GlobalConfig *cfg, Journald *journal)
+journal_reader_new(GlobalConfig *cfg, Journald *journal, atomic_gssize *memory_usage_counter)
 {
   JournalReader *self = g_new0(JournalReader, 1);
-  log_source_init_instance(&self->super, cfg);
+  log_source_init_instance(&self->super, cfg, memory_usage_counter);
   self->super.wakeup = _reader_wakeup;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;

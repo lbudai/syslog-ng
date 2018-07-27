@@ -413,12 +413,11 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   self->threaded = threaded;
   self->pos_tracked = pos_tracked;
   self->super.expr_node = expr_node;
-  self->window_mem_limit = options->window_mem_limit;
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
 
 void
-log_source_init_instance(LogSource *self, GlobalConfig *cfg)
+log_source_init_instance(LogSource *self, GlobalConfig *cfg, atomic_gssize *window_mem_usage)
 {
   log_pipe_init_instance(&self->super, cfg);
   self->super.queue = log_source_queue;
@@ -426,6 +425,8 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
   self->ack_tracker = NULL;
+  self->window_mem_usage = window_mem_usage;
+  g_assert(self->window_mem_usage);
 }
 
 void
