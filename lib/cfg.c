@@ -373,11 +373,6 @@ cfg_set_version(GlobalConfig *self, gint version)
       self->user_version = VERSION_VALUE;
     }
 
-  if (cfg_is_config_version_older(self, 0x0303))
-    {
-      msg_warning("WARNING: global: the default value of log_fifo_size() has changed to 10000 in " VERSION_3_3
-                  " to reflect log_iw_size() changes for tcp()/udp() window size changes");
-    }
   return TRUE;
 }
 

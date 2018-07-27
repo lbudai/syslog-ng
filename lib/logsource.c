@@ -33,6 +33,8 @@
 
 #include <string.h>
 
+static const int DEFAULT_WINDOW_MEM_LIMIT = 100000;
+
 gboolean accurate_nanosleep = FALSE;
 
 void
@@ -50,29 +52,6 @@ log_source_window_empty(LogSource *self)
   if (self->window_empty_cb)
     self->window_empty_cb(self);
   msg_debug("LogSource window is empty");
-}
-
-static inline void
-_flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment, gboolean last_ack_type_is_suspended)
-{
-  gboolean suspended;
-  gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
-
-  msg_debug("Window size adjustment",
-            evt_tag_int("old_window_size", old_window_size),
-            evt_tag_int("window_size_increment", window_size_increment),
-            evt_tag_str("suspended_before_increment", suspended ? "TRUE" : "FALSE"),
-            evt_tag_str("last_ack_type_is_suspended", last_ack_type_is_suspended ? "TRUE" : "FALSE"));
-
-
-  gboolean need_to_resume_counter = !last_ack_type_is_suspended && suspended;
-  if (need_to_resume_counter)
-    window_size_counter_resume(&self->window_size);
-  if (old_window_size == 0 || need_to_resume_counter)
-    log_source_wakeup(self);
-
-  if (old_window_size+window_size_increment == self->options->init_window_size)
-    log_source_window_empty(self);
 }
 
 static void
@@ -139,16 +118,8 @@ _flow_control_rate_adjust(LogSource *self)
 }
 
 void
-log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment)
+log_source_flow_control_adjust(LogSource *self)
 {
-  _flow_control_window_size_adjust(self, window_size_increment, FALSE);
-  _flow_control_rate_adjust(self);
-}
-
-void
-log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment)
-{
-  _flow_control_window_size_adjust(self, window_size_increment, TRUE);
   _flow_control_rate_adjust(self);
 }
 
@@ -172,7 +143,8 @@ log_source_flow_control_suspend(LogSource *self)
             log_pipe_location_tag(&self->super),
             evt_tag_str("function", __FUNCTION__));
 
-  window_size_counter_suspend(&self->window_size);
+//  window_size_counter_suspend(&self->window_size);
+  //TODO!: need a counter type with a max value;when max reached, suspended bit should be set
 }
 
 void
@@ -264,7 +236,6 @@ void
 log_source_post(LogSource *self, LogMessage *msg)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  gint old_window_size;
 
   msg->source = (LogSource *)log_pipe_ref(&self->super);
   log_source_increment_window_mem_usage(self, msg->allocated_bytes);
@@ -277,24 +248,6 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
 
-  old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
-
-  if (G_UNLIKELY(old_window_size == 1))
-    {
-      msg_debug("Source has been suspended",
-                log_pipe_location_tag(&self->super),
-                evt_tag_str("function", __FUNCTION__));
-    }
-
-  /*
-   * NOTE: this assertion validates that the source is not overflowing its
-   * own flow-control window size, decreased above, by the atomic statement.
-   *
-   * If the _old_ value is zero, that means that the decrement operation
-   * above has decreased the value to -1.
-   */
-
-  g_assert(old_window_size > 0);
   log_pipe_queue(&self->super, msg, &path_options);
 }
 
@@ -447,8 +400,10 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
    * configuration and we received a SIGHUP.  This means that opened
    * connections will not have their window_size changed. */
 
-  if ((gint)window_size_counter_get(&self->window_size, NULL) == -1)
-    window_size_counter_set(&self->window_size, options->init_window_size);
+  self->window_mem_limit = options->window_mem_limit;
+  if (self->window_mem_limit == -1)
+    self->window_mem_limit = DEFAULT_WINDOW_MEM_LIMIT; 
+
   self->options = options;
   if (self->stats_id)
     g_free(self->stats_id);
@@ -471,7 +426,6 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.free_fn = log_source_free;
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
-  window_size_counter_set(&self->window_size, (gsize)-1);
   self->ack_tracker = NULL;
 }
 
@@ -490,7 +444,7 @@ log_source_free(LogPipe *s)
 void
 log_source_options_defaults(LogSourceOptions *options)
 {
-  options->init_window_size = 100;
+  options->window_mem_limit = DEFAULT_WINDOW_MEM_LIMIT; 
   options->keep_hostname = -1;
   options->chain_hostnames = -1;
   options->keep_timestamp = -1;

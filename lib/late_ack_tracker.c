@@ -182,9 +182,9 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
             g_list_free_full(continuous_range_head, g_free);
           }
         if (ack_type == AT_SUSPENDED)
-          log_source_flow_control_adjust_when_suspended(msg->source, ack_range_length);
+          log_source_flow_control_adjust(msg->source); //TODO: check
         else
-          log_source_flow_control_adjust(msg->source, ack_range_length);
+          log_source_flow_control_adjust(msg->source);
 
         if (!self->ack_record_storage || g_list_length(self->ack_record_storage) == 0)
           late_ack_tracker_on_all_acked_call(s);

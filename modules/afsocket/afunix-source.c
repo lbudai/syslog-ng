@@ -164,6 +164,6 @@ afunix_sd_new_stream(gchar *filename, GlobalConfig *cfg)
 {
   AFUnixSourceDriver *self = afunix_sd_new_instance(transport_mapper_unix_stream_new(), filename, cfg);
 
-  self->super.reader_options.super.init_window_size = self->super.max_connections * 100;
+  //TODO: check shared max memory atomic ctr
   return self;
 }

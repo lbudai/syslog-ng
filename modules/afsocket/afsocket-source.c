@@ -472,25 +472,7 @@ afsocket_sd_setup_reader_options(AFSocketSourceDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
 
-  if (self->transport_mapper->sock_type == SOCK_STREAM && !self->window_size_initialized)
-    {
-      /* distribute the window evenly between each of our possible
-       * connections.  This is quite pessimistic and can result in very low
-       * window sizes. Increase that but warn the user at the same time
-       */
-
-      self->reader_options.super.init_window_size /= self->max_connections;
-      if (self->reader_options.super.init_window_size < 100)
-        {
-          msg_warning("WARNING: window sizing for tcp sources were changed in " VERSION_3_3
-                      ", the configuration value was divided by the value of max-connections(). The result was too small, clamping to 100 entries. Ensure you have a proper log_fifo_size setting to avoid message loss.",
-                      evt_tag_int("orig_log_iw_size", self->reader_options.super.init_window_size),
-                      evt_tag_int("new_log_iw_size", 100),
-                      evt_tag_int("min_log_fifo_size", 100 * self->max_connections));
-          self->reader_options.super.init_window_size = 100;
-        }
-      self->window_size_initialized = TRUE;
-    }
+  //TODO: shared memory usage atomic counter
   log_reader_options_init(&self->reader_options, cfg, self->super.super.group);
   return TRUE;
 }
@@ -771,13 +753,4 @@ afsocket_sd_init_instance(AFSocketSourceDriver *self,
   log_reader_options_defaults(&self->reader_options);
   self->reader_options.super.stats_level = STATS_LEVEL1;
   self->reader_options.super.stats_source = transport_mapper->stats_source;
-
-  /* NOTE: this changes the initial window size from 100 to 1000. Reasons:
-   * Starting with syslog-ng 3.3, window-size is distributed evenly between
-   * _all_ possible connections to avoid starving.  With the defaults this
-   * means that we get a window size of 10 messages log_iw_size(100) /
-   * max_connections(10), but that is incredibly slow, thus bump this value here.
-   */
-
-  self->reader_options.super.init_window_size = 1000;
 }
