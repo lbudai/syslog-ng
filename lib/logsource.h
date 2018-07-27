@@ -32,7 +32,6 @@
 
 typedef struct _LogSourceOptions
 {
-  gint init_window_size;
   const gchar *group_name;
   gboolean keep_timestamp;
   gboolean keep_hostname;
@@ -69,7 +68,6 @@ struct _LogSource
   gboolean pos_tracked;
   gchar *stats_id;
   gchar *stats_instance;
-  WindowSizeCounter window_size;
   StatsCounterItem *last_message_seen;
   StatsCounterItem *recvd_messages;
   guint32 last_ack_count;
@@ -100,9 +98,8 @@ void log_source_options_set_tags(LogSourceOptions *options, GList *tags);
 void log_source_free(LogPipe *s);
 void log_source_wakeup(LogSource *self);
 void log_source_window_empty(LogSource *self);
-void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
-void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_suspend(LogSource *self);
+void log_source_flow_control_adjust(LogSource *self);
 void log_source_global_init(void);
 
 
@@ -123,7 +120,7 @@ log_source_increment_memory_usage(LogSource *self, gsize value)
                 log_pipe_location_tag(&self->super),
                 evt_tag_int("max-memory", self->max_memory),
                 evt_tag_int("current-memory", old));
-      window_size_counter_suspend(&self->window_size);
+      //window_size_counter_suspend(&self->window_size); //TODO: create a memory_usage_ctr: it has a max value, when reached, suspended bit is set
     }
 }
 
@@ -145,9 +142,14 @@ log_source_decrement_memory_usage(LogSource *self, gsize value)
                 log_pipe_location_tag(&self->super),
                 evt_tag_int("max-memory", self->max_memory),
                 evt_tag_int("current-memory", old));
-      window_size_counter_resume(&self->window_size);
+//      window_size_counter_resume(&self->window_size);
       log_source_wakeup(self);
     }
+
+   if (old - value == 0)
+     {
+       log_source_window_empty(self);
+     }
 }
 
 static inline gboolean
@@ -159,14 +161,8 @@ log_source_max_memory_limit_reached(LogSource *self)
 static inline gboolean
 log_source_free_to_send(LogSource *self)
 {
-  return !window_size_counter_suspended(&self->window_size);
-//  return !log_source_max_memory_limit_reached(self); TODO
-}
-
-static inline gint
-log_source_get_init_window_size(LogSource *self)
-{
-  return self->options->init_window_size;
+//  return !window_size_counter_suspended(&self->window_size);
+  return !log_source_max_memory_limit_reached(self); //TODO
 }
 
 #endif
