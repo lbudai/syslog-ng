@@ -234,7 +234,7 @@ afprogram_sd_init(LogPipe *s)
       transport = log_transport_pipe_new(fd);
       proto = log_proto_text_server_new(transport, &self->reader_options.proto_options.super);
 
-      self->reader = log_reader_new(s->cfg);
+      self->reader = log_reader_new(s->cfg, &self->super.memory_usage);
       log_reader_reopen(self->reader, proto,
                         poll_fd_events_new(fd));
       log_reader_set_options(self->reader,

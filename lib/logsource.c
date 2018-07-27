@@ -395,8 +395,9 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
    * configuration and we received a SIGHUP.  This means that opened
    * connections will not have their window_size changed. */
 
-  if (options->max_memory == -1)
-    options->max_memory = 10000; //TODO: CONSt
+  self->max_memory = options->max_memory;
+  if (self->max_memory == -1)
+    self->max_memory = 10000; //TODO: CONSt
 
   self->options = options;
   if (self->stats_id)
@@ -408,12 +409,11 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   self->threaded = threaded;
   self->pos_tracked = pos_tracked;
   self->super.expr_node = expr_node;
-  self->max_memory = options->max_memory;
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
 
 void
-log_source_init_instance(LogSource *self, GlobalConfig *cfg)
+log_source_init_instance(LogSource *self, GlobalConfig *cfg, atomic_gssize *memory_usage_ctr)
 {
   log_pipe_init_instance(&self->super, cfg);
   self->super.queue = log_source_queue;
@@ -421,6 +421,8 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
   self->ack_tracker = NULL;
+  self->memory_usage = memory_usage_ctr;
+  g_assert(self->memory_usage);
 }
 
 void

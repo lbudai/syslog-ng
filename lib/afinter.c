@@ -315,7 +315,7 @@ afinter_source_new(AFInterSourceDriver *owner, LogSourceOptions *options)
 {
   AFInterSource *self = g_new0(AFInterSource, 1);
 
-  log_source_init_instance(&self->super, owner->super.super.super.cfg);
+  log_source_init_instance(&self->super, owner->super.super.super.cfg, &owner->super.memory_usage);
   log_source_set_options(&self->super, options, owner->super.super.id, NULL, FALSE, FALSE,
                          owner->super.super.super.expr_node);
   afinter_source_init_watches(self);

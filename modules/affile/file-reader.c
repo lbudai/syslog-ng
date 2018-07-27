@@ -146,7 +146,7 @@ _setup_logreader(LogPipe *s, PollEvents *poll_events, LogProtoServer *proto, gbo
 {
   FileReader *self = (FileReader *) s;
 
-  self->reader = log_reader_new(log_pipe_get_config(s));
+  self->reader = log_reader_new(log_pipe_get_config(s), &self->owner->memory_usage);
   log_reader_reopen(self->reader, proto, poll_events);
   log_reader_set_options(self->reader,
                          s,
