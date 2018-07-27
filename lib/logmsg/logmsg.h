@@ -171,6 +171,7 @@ struct _LogMessage
   gint ack_and_ref_and_abort_and_suspended;
 
   AckRecord *ack_record;
+  LogSource *source;
 //TODO:  LogSource *owner; use owner instead of ack_record when tracking mem_usage, log_source_post could update the value
   LMAckFunc ack_func;
   LogMessage *original;
@@ -220,6 +221,7 @@ extern const gint logmsg_sd_prefix_len;
 extern gint logmsg_node_max;
 
 LogMessage *log_msg_ref(LogMessage *m);
+gint log_msg_get_refcnt(const LogMessage *m);
 void log_msg_unref(LogMessage *m);
 void log_msg_write_protect(LogMessage *m);
 void log_msg_write_unprotect(LogMessage *m);

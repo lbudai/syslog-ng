@@ -1392,7 +1392,8 @@ log_msg_free(LogMessage *self)
     log_msg_unref(self->original);
 
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
-// _decrement_source_memory_usage(self, self->allocated_bytes);
+  log_source_decrement_memory_usage(self->source, self->allocated_bytes);
+  log_pipe_unref(&self->source->super);
 
   g_free(self);
 }
@@ -1485,6 +1486,12 @@ log_msg_ref(LogMessage *self)
   old_value = log_msg_update_ack_and_ref(self, 1, 0);
   g_assert(LOGMSG_REFCACHE_VALUE_TO_REF(old_value) >= 1);
   return self;
+}
+
+gint
+log_msg_get_refcnt(const LogMessage *m)
+{
+  return LOGMSG_REFCACHE_VALUE_TO_REF(m->ack_and_ref_and_abort_and_suspended);
 }
 
 /**

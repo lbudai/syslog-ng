@@ -146,10 +146,10 @@ log_source_decrement_memory_usage(LogSource *self, gsize value)
       log_source_wakeup(self);
     }
 
-   if (old - value == 0)
-     {
-       log_source_window_empty(self);
-     }
+  if (old - value == 0)
+    {
+      log_source_window_empty(self);
+    }
 }
 
 static inline gboolean
