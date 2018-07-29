@@ -33,6 +33,8 @@
 
 #include <string.h>
 
+static const int DEFAULT_MAX_MEMORY_USAGE = 100000;
+
 gboolean accurate_nanosleep = FALSE;
 
 void
@@ -402,7 +404,7 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
 
   self->max_memory = options->max_memory;
   if (self->max_memory == -1)
-    self->max_memory = 10000; //TODO: CONSt
+    self->max_memory = DEFAULT_MAX_MEMORY_USAGE; //TODO: CONSt
 
   self->options = options;
   if (self->stats_id)
@@ -445,7 +447,7 @@ log_source_free(LogPipe *s)
 void
 log_source_options_defaults(LogSourceOptions *options)
 {
-  options->max_memory = 10000; //TODO
+  options->max_memory = DEFAULT_MAX_MEMORY_USAGE; //TODO
   options->keep_hostname = -1;
   options->chain_hostnames = -1;
   options->keep_timestamp = -1;
