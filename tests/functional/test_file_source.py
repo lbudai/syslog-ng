@@ -39,7 +39,7 @@ source s_wildcard { wildcard_file(
 
 destination d_wildcard { file("test-wildcard.log"); };
 
-log { source(s_wildcard); destination(d_wildcard); };
+log { source(s_wildcard); destination(d_wildcard); flags(flow-control); };
 
 """ % locals()
 
@@ -56,7 +56,7 @@ source s_wildcard { wildcard_file(
 
 destination d_wildcard { file("test-wildcard.log"); };
 
-log { source(s_wildcard); destination(d_wildcard); };
+log { source(s_wildcard); destination(d_wildcard); flags(flow-control); };
 
 """ % locals()
 
