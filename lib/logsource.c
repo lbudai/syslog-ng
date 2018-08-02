@@ -33,7 +33,7 @@
 
 #include <string.h>
 
-static const int DEFAULT_WINDOW_MEM_LIMIT = 100000;
+static const int DEFAULT_WINDOW_MEM_LIMIT = 1000000;
 
 gboolean accurate_nanosleep = FALSE;
 
