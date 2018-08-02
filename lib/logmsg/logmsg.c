@@ -1224,6 +1224,11 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
 
   memcpy(self, msg, sizeof(*msg));
   msg->allocated_bytes = allocated_bytes;
+  LogSource *src = log_msg_get_source(msg);
+  if (src)
+    {
+      log_source_increment_window_mem_usage(src, msg->allocated_bytes);
+    }
 
   msg_debug("Message was cloned",
             evt_tag_printf("original_msg", "%p", msg),
