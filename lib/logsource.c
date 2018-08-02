@@ -56,6 +56,8 @@ log_source_window_empty(LogSource *self)
 static inline void
 _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment, gboolean last_ack_type_is_suspended)
 {
+  if (!self->options->count_limit_set)
+    return;
   gboolean suspended;
   gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
 

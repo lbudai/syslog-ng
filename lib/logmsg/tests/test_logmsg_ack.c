@@ -28,6 +28,7 @@
 
 struct _AckRecord
 {
+  AckTracker *tracker;
   LogMessage *original;
   LogPathOptions path_options;
   gboolean acked;
