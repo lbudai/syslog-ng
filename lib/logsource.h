@@ -28,6 +28,7 @@
 #include "logpipe.h"
 #include "stats/stats-registry.h"
 #include "window-size-counter.h"
+#include "atomic-gssize.h"
 
 typedef struct _LogSourceOptions
 {
@@ -73,6 +74,7 @@ struct _LogSource
   StatsCounterItem *recvd_messages;
   guint32 last_ack_count;
   guint32 ack_count;
+  gsize memory_limit;
   glong window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
   AckTracker *ack_tracker;
@@ -103,11 +105,71 @@ void log_source_flow_control_suspend(LogSource *self);
 
 void log_source_global_init(void);
 
+static inline void
+log_source_increment_memory_usage(LogSource *self, gsize value)
+{
+  if (!self || self->memory_limit == 0)
+    return;
+
+  gsize old = (gsize)window_size_counter_add(&self->window_size, value, NULL);
+  msg_trace("memory_usage.inc",
+            evt_tag_long("memory_limit", self->memory_limit),
+            evt_tag_long("memory_usage", old),
+            evt_tag_long("increment", value));
+
+  if (old + value >= self->memory_limit)
+    {
+      msg_debug("memory_limit has been reached, suspend source",
+                log_pipe_location_tag(&self->super),
+                evt_tag_int("memory_limit", self->memory_limit),
+                evt_tag_int("memory_usage", old));
+      window_size_counter_suspend(&self->window_size);
+    }
+}
+
+static inline void
+log_source_decrement_memory_usage(LogSource *self, gsize value)
+{
+  if (!self || self->memory_limit == 0)
+    return;
+
+  gboolean suspended;
+  gsize old = (gsize)window_size_counter_sub(&self->window_size, value, &suspended);
+  msg_trace("memory_usage.dec",
+            evt_tag_long("memory_limit", self->memory_limit),
+            evt_tag_long("memory_usage", old),
+            evt_tag_long("decrement", value),
+            evt_tag_str("suspended before decrement memory_usage", suspended ? "TRUE" : "FALSE"));
+
+  // TODO: check suspend mode: ACK_TYPE vs. the time when the message is freed...
+  if (old - value < self->memory_limit || suspended)
+    {
+      msg_debug("memory usage below under limit, resume source",
+                log_pipe_location_tag(&self->super),
+                evt_tag_int("memory_limit", self->memory_limit),
+                evt_tag_int("memory_usage", old));
+      window_size_counter_resume(&self->window_size);
+      log_source_wakeup(self);
+    }
+
+  if (old - value == 0)
+    log_source_window_empty(self);
+}
+
+static inline gboolean
+log_source_memory_limit_reached(LogSource *self)
+{
+  gboolean suspended;
+  gboolean res = window_size_counter_get(&self->window_size, &suspended) >= self->memory_limit;
+
+  return res || suspended; //TODO: check
+}
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)
 {
   return !window_size_counter_suspended(&self->window_size);
+//  return !log_source_window__mem_limit_reached(self); TODO
 }
 
 static inline gint

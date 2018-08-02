@@ -460,6 +460,7 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   log_pipe_detach_expr_node(&self->super);
   log_pipe_attach_expr_node(&self->super, expr_node);
 
+  self->memory_limit = options->memory_limit;
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
 
