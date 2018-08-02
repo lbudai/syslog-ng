@@ -222,6 +222,8 @@ log_msg_is_write_protected(const LogMessage *self)
   return self->protect_cnt > 0;
 }
 
+gboolean log_msg_source_reached_memory_limit(LogMessage *msg);
+
 LogMessage *log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options);
 LogMessage *log_msg_make_writable(LogMessage **pmsg, const LogPathOptions *path_options);
 

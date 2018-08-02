@@ -288,8 +288,10 @@ log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, 
   self->alloc_sdata = alloc_sdata;
   if (self->sdata)
     {
-      self->allocated_bytes += ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
-      stats_counter_add(count_allocated_bytes, (self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      gsize inc = ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      self->allocated_bytes += inc;
+      log_source_increment_window_mem_usage(self->source, inc);
+      stats_counter_add(count_allocated_bytes, inc);
     }
   /* ok, we have our own SDATA array now which has at least one free slot */
 
@@ -538,6 +540,7 @@ log_msg_set_value(LogMessage *self, NVHandle handle, const gchar *value, gssize 
       self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
       self->allocated_bytes += self->payload->size;
+      log_source_increment_window_mem_usage(self->source, self->payload->size);
       stats_counter_add(count_allocated_bytes, self->payload->size);
     }
 
@@ -558,6 +561,7 @@ log_msg_set_value(LogMessage *self, NVHandle handle, const gchar *value, gssize 
         }
       guint32 new_size = self->payload->size;
       self->allocated_bytes += (new_size - old_size);
+      log_source_increment_window_mem_usage(self->source, new_size - old_size);
       stats_counter_add(count_allocated_bytes, new_size-old_size);
       stats_counter_inc(count_payload_reallocs);
     }
@@ -1158,6 +1162,7 @@ log_msg_alloc(gsize payload_size)
 
   msg->num_nodes = nodes;
   msg->allocated_bytes = alloc_size + payload_space;
+  log_source_increment_window_mem_usage(msg->source, msg->allocated_bytes);
   stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
   return msg;
 }
@@ -1377,6 +1382,7 @@ log_msg_free(LogMessage *self)
 
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
 
+  log_source_decrement_window_mem_usage(self->source, self->allocated_bytes);
   if (self->source)
     log_pipe_unref(&self->source->super);
 
@@ -1864,6 +1870,15 @@ gssize log_msg_get_size(LogMessage *self)
     sizeof(GSockAddr) + sizeof (GSockAddrFuncs) + // msg.saddr + msg.saddr.sa_func
     ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
     nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
+}
+
+gboolean
+log_msg_source_reached_memory_limit(LogMessage *msg)
+{
+  if (!msg->source)
+    return FALSE;
+
+  return log_source_window_mem_limit_reached(msg->source);
 }
 
 #ifdef __linux__
