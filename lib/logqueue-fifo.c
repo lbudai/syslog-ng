@@ -173,40 +173,34 @@ log_queue_fifo_move_input_unlocked(LogQueueFifo *self, gint thread_id)
    * justify proper locking in this case.
    */
 
-  queue_len = log_queue_fifo_get_length(&self->super);
-  if (queue_len + self->qoverflow_input[thread_id].len > self->qoverflow_size)
+  queue_len = self->qoverflow_input[thread_id].len;
+  gint i, deleted = 0;
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  for (i = 0; i < queue_len; i++)
     {
-      /* slow path, the input thread's queue would overflow the queue, let's drop some messages */
+      LogMessageQueueNode *node = iv_list_entry(self->qoverflow_input[thread_id].items.next, LogMessageQueueNode, list);
+      LogMessage *msg = node->msg;
 
-      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-      gint i;
-      gint n;
+      if (!log_msg_source_reached_memory_limit(msg))
+        continue;
 
-      /* NOTE: MAX is needed here to ensure that the lost race on queue_len
-       * doesn't result in n < 0 */
-      n = self->qoverflow_input[thread_id].len - MAX(0, (self->qoverflow_size - queue_len));
+      path_options.ack_needed = node->ack_needed;
+      path_options.flow_control_requested = node->flow_control_requested;
+      if (path_options.flow_control_requested)
+        continue;
 
-      for (i = 0; i < n; i++)
-        {
-          LogMessageQueueNode *node = iv_list_entry(self->qoverflow_input[thread_id].items.next, LogMessageQueueNode, list);
-          LogMessage *msg = node->msg;
-
-          iv_list_del(&node->list);
-          self->qoverflow_input[thread_id].len--;
-          path_options.ack_needed = node->ack_needed;
-          path_options.flow_control_requested = node->flow_control_requested;
-          stats_counter_inc(self->super.dropped_messages);
-          log_msg_free_queue_node(node);
-          if (path_options.flow_control_requested)
-            log_msg_drop(msg, &path_options, AT_SUSPENDED);
-          else
-            log_msg_drop(msg, &path_options, AT_PROCESSED);
-        }
-      msg_debug("Destination queue full, dropping messages",
+      ++deleted;
+      iv_list_del(&node->list);
+      self->qoverflow_input[thread_id].len--;
+      stats_counter_inc(self->super.dropped_messages);
+      log_msg_free_queue_node(node);
+      msg_debug("window_mem_limit reached, dropping messages",
+                log_pipe_location_tag((LogPipe *)msg->source),
                 evt_tag_int("queue_len", queue_len),
                 evt_tag_int("log_fifo_size", self->qoverflow_size),
-                evt_tag_int("count", n),
                 evt_tag_str("persist_name", self->super.persist_name));
+
+      log_msg_drop(msg, &path_options, AT_PROCESSED);
     }
   stats_counter_add(self->super.queued_messages, self->qoverflow_input[thread_id].len);
   iv_list_update_msg_size(self, &self->qoverflow_input[thread_id].items);
@@ -304,7 +298,8 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
   if (thread_id >= 0)
     log_queue_fifo_move_input_unlocked(self, thread_id);
 
-  if (log_queue_fifo_get_length(s) < self->qoverflow_size)
+  gboolean memory_limit_reached = log_msg_source_reached_memory_limit(msg);
+  if (path_options->flow_control_requested || !memory_limit_reached)
     {
       node = log_msg_alloc_queue_node(msg, path_options);
 
@@ -317,20 +312,18 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
 
       log_msg_unref(msg);
     }
-  else
+  else if (!path_options->flow_control_requested && memory_limit_reached)
     {
       stats_counter_inc(self->super.dropped_messages);
       g_static_mutex_unlock(&self->super.lock);
 
-      if (path_options->flow_control_requested)
-        log_msg_drop(msg, path_options, AT_SUSPENDED);
-      else
-        log_msg_drop(msg, path_options, AT_PROCESSED);
-
-      msg_debug("Destination queue full, dropping message",
+      msg_debug("window_mem_limit reached, dropping message",
+                log_pipe_location_tag((LogPipe *)msg->source),
                 evt_tag_int("queue_len", log_queue_fifo_get_length(&self->super)),
                 evt_tag_int("log_fifo_size", self->qoverflow_size),
                 evt_tag_str("persist_name", self->super.persist_name));
+
+      log_msg_drop(msg, path_options, AT_PROCESSED);
     }
   return;
 }
