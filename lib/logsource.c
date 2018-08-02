@@ -267,6 +267,8 @@ log_source_post(LogSource *self, LogMessage *msg)
   gint old_window_size;
 
   msg->source = (LogSource *)log_pipe_ref(&self->super);
+  log_source_increment_window_mem_usage(self, msg->allocated_bytes);
+  msg_trace("log_source_post", evt_tag_long("allocated_bytes", msg->allocated_bytes));
   ack_tracker_track_msg(self->ack_tracker, msg);
 
   /* NOTE: we start by enabling flow-control, thus we need an acknowledgement */
