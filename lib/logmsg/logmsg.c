@@ -185,6 +185,15 @@ log_msg_set_host_id(LogMessage *msg)
   msg->host_id = host_id_get();
 }
 
+static inline LogSource *
+log_msg_get_source(LogMessage *msg)
+{
+  if (!msg->ack_record || !msg->ack_record->tracker)
+    return NULL;
+
+  return ack_tracker_get_source(msg->ack_record->tracker);
+}
+
 /* the index matches the value id */
 const gchar *builtin_value_names[] =
 {
@@ -287,8 +296,10 @@ log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, 
   self->alloc_sdata = alloc_sdata;
   if (self->sdata)
     {
-      self->allocated_bytes += ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
-      stats_counter_add(count_allocated_bytes, (self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      gsize inc = ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      self->allocated_bytes += inc;
+      log_source_increment_window_mem_usage(log_msg_get_source(self), inc);
+      stats_counter_add(count_allocated_bytes, inc);
     }
   /* ok, we have our own SDATA array now which has at least one free slot */
 
@@ -537,6 +548,7 @@ log_msg_set_value(LogMessage *self, NVHandle handle, const gchar *value, gssize 
       self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
       self->allocated_bytes += self->payload->size;
+      log_source_increment_window_mem_usage(log_msg_get_source(self), self->payload->size);
       stats_counter_add(count_allocated_bytes, self->payload->size);
     }
 
@@ -557,6 +569,7 @@ log_msg_set_value(LogMessage *self, NVHandle handle, const gchar *value, gssize 
         }
       guint32 new_size = self->payload->size;
       self->allocated_bytes += (new_size - old_size);
+      log_source_increment_window_mem_usage(log_msg_get_source(self), new_size - old_size);
       stats_counter_add(count_allocated_bytes, new_size-old_size);
       stats_counter_inc(count_payload_reallocs);
     }
@@ -1157,6 +1170,7 @@ log_msg_alloc(gsize payload_size)
 
   msg->num_nodes = nodes;
   msg->allocated_bytes = alloc_size + payload_space;
+  log_source_increment_window_mem_usage(log_msg_get_source(msg), msg->allocated_bytes);
   stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
   return msg;
 }
@@ -1373,6 +1387,13 @@ log_msg_free(LogMessage *self)
     log_msg_unref(self->original);
 
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
+
+  LogSource *src = log_msg_get_source(self);
+  if (src)
+    {
+      log_source_decrement_window_mem_usage(src, self->allocated_bytes);
+      log_pipe_unref(&src->super);
+    }
 
   g_free(self);
 }
@@ -1858,6 +1879,16 @@ gssize log_msg_get_size(LogMessage *self)
     sizeof(GSockAddr) + sizeof (GSockAddrFuncs) + // msg.saddr + msg.saddr.sa_func
     ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
     nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
+}
+
+gboolean
+log_msg_source_reached_memory_limit(LogMessage *msg)
+{
+  LogSource *src = log_msg_get_source(msg);
+  if (src)
+    return FALSE;
+
+  return log_source_window_mem_limit_reached(src);
 }
 
 #ifdef __linux__
