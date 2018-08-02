@@ -83,6 +83,28 @@ struct _LogSource
   void (*window_empty_cb)(LogSource *s);
 };
 
+gboolean log_source_init(LogPipe *s);
+gboolean log_source_deinit(LogPipe *s);
+
+void log_source_post(LogSource *self, LogMessage *msg);
+
+void log_source_set_options(LogSource *self, LogSourceOptions *options, const gchar *stats_id,
+                            const gchar *stats_instance, gboolean threaded, gboolean pos_tracked, LogExprNode *expr_node);
+void log_source_mangle_hostname(LogSource *self, LogMessage *msg);
+void log_source_init_instance(LogSource *self, GlobalConfig *cfg);
+void log_source_options_defaults(LogSourceOptions *options);
+void log_source_options_init(LogSourceOptions *options, GlobalConfig *cfg, const gchar *group_name);
+void log_source_options_destroy(LogSourceOptions *options);
+void log_source_options_set_tags(LogSourceOptions *options, GList *tags);
+void log_source_free(LogPipe *s);
+void log_source_wakeup(LogSource *self);
+void log_source_window_empty(LogSource *self);
+void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
+void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
+void log_source_flow_control_suspend(LogSource *self);
+void log_source_global_init(void);
+
+
 static inline void
 log_source_increment_window_mem_usage(LogSource *self, gsize value)
 {
@@ -146,27 +168,5 @@ log_source_get_init_window_size(LogSource *self)
 {
   return self->options->init_window_size;
 }
-
-gboolean log_source_init(LogPipe *s);
-gboolean log_source_deinit(LogPipe *s);
-
-void log_source_post(LogSource *self, LogMessage *msg);
-
-void log_source_set_options(LogSource *self, LogSourceOptions *options, const gchar *stats_id,
-                            const gchar *stats_instance, gboolean threaded, gboolean pos_tracked, LogExprNode *expr_node);
-void log_source_mangle_hostname(LogSource *self, LogMessage *msg);
-void log_source_init_instance(LogSource *self, GlobalConfig *cfg);
-void log_source_options_defaults(LogSourceOptions *options);
-void log_source_options_init(LogSourceOptions *options, GlobalConfig *cfg, const gchar *group_name);
-void log_source_options_destroy(LogSourceOptions *options);
-void log_source_options_set_tags(LogSourceOptions *options, GList *tags);
-void log_source_free(LogPipe *s);
-void log_source_wakeup(LogSource *self);
-void log_source_window_empty(LogSource *self);
-void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
-void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
-void log_source_flow_control_suspend(LogSource *self);
-
-void log_source_global_init(void);
 
 #endif
