@@ -81,18 +81,6 @@ struct _LogSource
   void (*window_empty_cb)(LogSource *s);
 };
 
-static inline gboolean
-log_source_free_to_send(LogSource *self)
-{
-  return !window_size_counter_suspended(&self->window_size);
-}
-
-static inline gint
-log_source_get_init_window_size(LogSource *self)
-{
-  return self->options->init_window_size;
-}
-
 gboolean log_source_init(LogPipe *s);
 gboolean log_source_deinit(LogPipe *s);
 
@@ -114,5 +102,18 @@ void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 wind
 void log_source_flow_control_suspend(LogSource *self);
 
 void log_source_global_init(void);
+
+
+static inline gboolean
+log_source_free_to_send(LogSource *self)
+{
+  return !window_size_counter_suspended(&self->window_size);
+}
+
+static inline gint
+log_source_get_init_window_size(LogSource *self)
+{
+  return self->options->init_window_size;
+}
 
 #endif
