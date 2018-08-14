@@ -72,4 +72,10 @@ ack_tracker_manage_msg_ack(AckTracker *self, LogMessage *msg, AckType ack_type)
   self->manage_msg_ack(self, msg, ack_type);
 }
 
+static inline LogSource *
+ack_tracker_get_source(AckTracker *self)
+{
+  return self->source;
+}
+
 #endif
