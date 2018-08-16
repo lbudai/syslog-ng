@@ -34,6 +34,7 @@
 #include <string.h>
 
 gboolean accurate_nanosleep = FALSE;
+static const gsize DEFAULT_MEMORY_LIMIT = 4L * 1024L * 1024L * 1024L; //4MB
 
 void
 log_source_wakeup(LogSource *self)
@@ -231,6 +232,27 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
     }
 }
 
+static void
+_init_window_size_counter(LogSource *self)
+{
+  g_assert(!(self->options->count_limit_set && self->options->memory_limit != 0));
+
+  self->memory_limit = self->options->memory_limit;
+  if (self->options->memory_limit == 0 && !self->options->count_limit_set)
+    self->options->count_limit_set = TRUE;
+  if (self->options->count_limit_set)
+    {
+      window_size_counter_set(&self->window_size, self->options->init_window_size);
+      window_size_counter_init(&self->window_size, 0);
+      msg_trace("init_window_size_counter with count-limit", evt_tag_int("window_size", self->options->init_window_size));
+      return;
+    }
+
+  window_size_counter_set(&self->window_size, 0);
+  window_size_counter_init(&self->window_size, self->options->memory_limit);
+  msg_trace("init_window_size_counter with memory-limit");
+}
+
 gboolean
 log_source_init(LogPipe *s)
 {
@@ -243,7 +265,6 @@ log_source_init(LogPipe *s)
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
   stats_unlock();
-  window_size_counter_init(&self->window_size, 0);
   return TRUE;
 }
 
@@ -446,8 +467,6 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
    * configuration and we received a SIGHUP.  This means that opened
    * connections will not have their window_size changed. */
 
-  if ((gint)window_size_counter_get(&self->window_size, NULL) == -1)
-    window_size_counter_set(&self->window_size, options->init_window_size);
   self->options = options;
   if (self->stats_id)
     g_free(self->stats_id);
@@ -459,8 +478,8 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   self->pos_tracked = pos_tracked;
   log_pipe_detach_expr_node(&self->super);
   log_pipe_attach_expr_node(&self->super, expr_node);
+  _init_window_size_counter(self);
 
-  self->memory_limit = options->memory_limit;
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
 
@@ -500,6 +519,7 @@ log_source_options_defaults(LogSourceOptions *options)
   options->host_override_len = -1;
   options->tags = NULL;
   options->read_old_records = TRUE;
+  options->memory_limit = 0;
   host_resolve_options_defaults(&options->host_resolve_options);
 }
 

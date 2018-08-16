@@ -49,6 +49,7 @@ typedef struct _LogSourceOptions
   gint stats_level;
   gint stats_source;
   gsize memory_limit;
+  gboolean count_limit_set;
 } LogSourceOptions;
 
 typedef struct _LogSource LogSource;
