@@ -299,24 +299,32 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
 
-  old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
-
-  if (G_UNLIKELY(old_window_size == 1))
+  if (self->options->count_limit_set)
     {
-      msg_debug("Source has been suspended",
-                log_pipe_location_tag(&self->super),
-                evt_tag_str("function", __FUNCTION__));
+      old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
+
+      if (G_UNLIKELY(old_window_size == 1))
+        {
+          msg_debug("Source has been suspended",
+                    log_pipe_location_tag(&self->super),
+                    evt_tag_str("function", __FUNCTION__));
+        }
+
+      /*
+       * NOTE: this assertion validates that the source is not overflowing its
+       * own flow-control window size, decreased above, by the atomic statement.
+       *
+       * If the _old_ value is zero, that means that the decrement operation
+       * above has decreased the value to -1.
+       */
+
+      g_assert(old_window_size > 0);
     }
-
-  /*
-   * NOTE: this assertion validates that the source is not overflowing its
-   * own flow-control window size, decreased above, by the atomic statement.
-   *
-   * If the _old_ value is zero, that means that the decrement operation
-   * above has decreased the value to -1.
-   */
-
-  g_assert(old_window_size > 0);
+  else
+    {
+      log_source_increment_memory_usage(self, msg->allocated_bytes);
+      msg_trace("log_source_post", evt_tag_long("allocated_bytes", msg->allocated_bytes));
+    }
   log_pipe_queue(&self->super, msg, &path_options);
 }
 
