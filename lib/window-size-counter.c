@@ -30,9 +30,9 @@ static const gsize SUSPEND_MASK = G_MAXSIZE ^ COUNTER_MASK;
 static const gsize RESUME_MASK = G_MAXSIZE >> 1;
 
 static gboolean
-_is_suspended(gsize v)
+_is_suspended(gsize v, gsize threshold)
 {
-  return (v == 0) || ((v & SUSPEND_MASK) == SUSPEND_MASK);
+  return (v == threshold) || ((v & SUSPEND_MASK) == SUSPEND_MASK);
 }
 
 gsize
@@ -52,7 +52,7 @@ window_size_counter_get(WindowSizeCounter *c, gboolean *suspended)
 {
   gsize v = atomic_gssize_get_unsigned(&c->counter);
   if (suspended)
-    *suspended = _is_suspended(v);
+    *suspended = _is_suspended(v, c->suspend_threshold);
   return v & COUNTER_MASK;
 }
 
@@ -63,7 +63,7 @@ window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended)
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value + value <= COUNTER_MAX);
   if (suspended)
-    *suspended = _is_suspended(v);
+    *suspended = _is_suspended(v, c->suspend_threshold);
 
   return old_value;
 }
@@ -75,7 +75,7 @@ window_size_counter_sub(WindowSizeCounter *c, gsize value, gboolean *suspended)
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value >= value);
   if (suspended)
-    *suspended = _is_suspended(v);
+    *suspended = _is_suspended(v, c->suspend_threshold);
 
   return old_value;
 }
@@ -96,6 +96,11 @@ gboolean
 window_size_counter_suspended(WindowSizeCounter *c)
 {
   gsize v = atomic_gssize_get_unsigned(&c->counter);
-  return _is_suspended(v);
+  return _is_suspended(v, c->suspend_threshold);
 }
 
+void
+window_size_counter_init(WindowSizeCounter *c, gsize suspend_threshold)
+{
+  c->suspend_threshold = suspend_threshold;
+}

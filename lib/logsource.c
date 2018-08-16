@@ -243,7 +243,7 @@ log_source_init(LogPipe *s)
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
   stats_unlock();
-
+  window_size_counter_init(&self->window_size, 0);
   return TRUE;
 }
 
