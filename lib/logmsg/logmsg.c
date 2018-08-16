@@ -1880,10 +1880,20 @@ gboolean
 log_msg_source_reached_memory_limit(LogMessage *msg)
 {
   LogSource *src = (LogSource *)log_msg_get_source(msg);
-  if (src)
+  if (!src)
     return FALSE;
 
   return log_source_memory_limit_reached(src);
+}
+
+gboolean
+log_msg_source_free_to_send(LogMessage *msg)
+{
+  LogSource *src = (LogSource *)log_msg_get_source(msg);
+  if (!src)
+    return TRUE;
+
+  return log_source_free_to_send(src);
 }
 
 LogPipe *
