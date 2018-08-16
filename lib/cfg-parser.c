@@ -127,10 +127,11 @@ static CfgLexerKeyword main_keywords[] =
   { "use_rcptid",         KW_USE_RCPTID, KWS_OBSOLETE, "This has been deprecated, try use_uniqid() instead" },
   { "use_uniqid",         KW_USE_UNIQID },
   { "memory_limit",       KW_MEMORY_LIMIT },
+  { "count_limit",        KW_COUNT_LIMIT },
 
   { "log_fifo_size",      KW_LOG_FIFO_SIZE },
   { "log_fetch_limit",    KW_LOG_FETCH_LIMIT },
-  { "log_iw_size",        KW_LOG_IW_SIZE },
+  { "log_iw_size",        KW_LOG_IW_SIZE, KWS_OBSOLETE,"This has been deprecated, try count_limit() instead" },
   { "log_msg_size",       KW_LOG_MSG_SIZE },
   { "log_prefix",         KW_LOG_PREFIX, KWS_OBSOLETE, "program_override" },
   { "program_override",   KW_PROGRAM_OVERRIDE },
