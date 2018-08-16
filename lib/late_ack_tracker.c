@@ -196,7 +196,8 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
   late_ack_tracker_unlock(s);
 
   log_msg_unref(msg);
-  log_pipe_unref((LogPipe *)self->super.source);
+  if (s->source->options->count_limit_set)
+    log_pipe_unref((LogPipe *)self->super.source);
 }
 
 gboolean
