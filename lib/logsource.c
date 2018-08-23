@@ -298,6 +298,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_ref(msg);
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
+  msg->mem_limited_src = !self->options->count_limit_set;
 
   if (self->options->count_limit_set)
     {
