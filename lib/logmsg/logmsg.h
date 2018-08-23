@@ -174,6 +174,7 @@ struct _LogMessage
   LMAckFunc ack_func;
   LogMessage *original;
   gsize allocated_bytes;
+  gboolean mem_limited_src;
 
   /* message parts */
 

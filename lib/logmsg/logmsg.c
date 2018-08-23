@@ -1367,12 +1367,12 @@ log_msg_new_mark(void)
 static void
 log_msg_free(LogMessage *self)
 {
-  LogSource *src = (LogSource *)log_msg_get_source(self);
-
-  if (src && src->options && !src->options->count_limit_set)
+  if (self->mem_limited_src)
     {
+      LogSource *src = (LogSource *)log_msg_get_source(self);
+
       log_source_decrement_memory_usage(src, self->allocated_bytes);
-      log_pipe_unref(&src->super);
+      log_pipe_unref(&src->super);//TODO...
     }
 
   if (log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD) && self->payload)
