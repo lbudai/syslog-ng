@@ -399,12 +399,12 @@ log_reader_handle_line(LogReader *self, const guchar *line, gint length, LogTran
                   aux->peer_addr ? : self->peer_addr,
                   &self->options->parse_options);
 
-  log_msg_refcache_start_producer(m);
-
+//  log_msg_refcache_start_producer(m);
   log_transport_aux_data_foreach(aux, _add_aux_nvpair, m);
 
   log_source_post(&self->super, m);
-  log_msg_refcache_stop();
+//  log_msg_refcache_stop();
+
   return log_source_free_to_send(&self->super);
 }
 
