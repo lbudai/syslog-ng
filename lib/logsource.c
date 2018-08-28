@@ -267,6 +267,7 @@ log_source_init(LogPipe *s)
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
   stats_unlock();
+
   return TRUE;
 }
 
@@ -288,6 +289,39 @@ log_source_deinit(LogPipe *s)
 void
 log_source_post(LogSource *self, LogMessage *msg)
 {
+  if (self->flow_controlled == FC_DISABLED)
+    {
+      msg_trace("TRACE:flow_controll is disabled");
+      if (self->options->count_limit_set)
+        {
+          //TODO: add window_size_counter::is_threshold_reached
+          if (window_size_counter_get(&self->window_size, NULL) == self->window_size.suspend_threshold)
+            {
+              LogPathOptions local_options;
+//              log_msg_break_ack(msg, &path_options, &local_options);
+              log_msg_unref(msg);
+              msg_warning("queue is full, dropping messages");
+              return;
+            }
+        }
+      else
+        {
+           //TODO: add window_size_counter::is_threshold_reached...
+           if (window_size_counter_get(&self->window_size, NULL) >= self->window_size.suspend_threshold)
+             {
+               LogPathOptions local_options;
+//               log_msg_break_ack(msg, &path_options, &local_options);
+               log_msg_unref(msg);
+               msg_warning("queue is full, dropping messages");
+               return;
+             }
+        }
+      msg_trace("not dropping messages");
+    }
+
+
+  log_msg_refcache_start_producer(msg);
+
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   gint old_window_size;
 
@@ -326,7 +360,16 @@ log_source_post(LogSource *self, LogMessage *msg)
       log_source_increment_memory_usage(self, msg->allocated_bytes);
       msg_trace("log_source_post", evt_tag_long("allocated_bytes", msg->allocated_bytes));
     }
+
+  if (self->flow_controlled != FC_UNSET)
+    path_options.flow_control_requested = TRUE;
   log_pipe_queue(&self->super, msg, &path_options);
+  if (self->flow_controlled == FC_UNSET)
+    {
+      self->flow_controlled = path_options.flow_control_requested ? FC_ENABLED : FC_DISABLED;
+      msg_trace("TRACE", evt_tag_str("flow_controlled:", self->flow_controlled ? "true": "false"));
+    }
+  log_msg_refcache_stop();
 }
 
 static gboolean
@@ -504,6 +547,7 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.deinit = log_source_deinit;
   window_size_counter_set(&self->window_size, (gsize)-1);
   self->ack_tracker = NULL;
+  self->flow_controlled = FC_UNSET;
 }
 
 void

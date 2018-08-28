@@ -52,6 +52,13 @@ typedef struct _LogSourceOptions
   gboolean count_limit_set;
 } LogSourceOptions;
 
+typedef enum
+{
+  FC_UNSET = -1,
+  FC_DISABLED = 0,
+  FC_ENABLED = 1
+} SRC_FLOW_CONTROL_FLAG;
+
 typedef struct _LogSource LogSource;
 
 /**
@@ -79,6 +86,7 @@ struct _LogSource
   glong window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
   AckTracker *ack_tracker;
+  gint flow_controlled;
 
   void (*wakeup)(LogSource *s);
   void (*window_empty_cb)(LogSource *s);
@@ -169,6 +177,8 @@ log_source_memory_limit_reached(LogSource *self)
 static inline gboolean
 log_source_free_to_send(LogSource *self)
 {
+  if (!self->flow_controlled)
+    return TRUE;
   return !window_size_counter_suspended(&self->window_size);
 //  return !log_source_window__mem_limit_reached(self); TODO
 }
