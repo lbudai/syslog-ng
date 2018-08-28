@@ -32,7 +32,9 @@ static const gsize RESUME_MASK = G_MAXSIZE >> 1;
 static gboolean
 _is_suspended(gsize v, gsize threshold)
 {
-  return (v == threshold) || ((v & SUSPEND_MASK) == SUSPEND_MASK);
+  if (threshold == 0)
+    return (v == threshold) || ((v & SUSPEND_MASK) == SUSPEND_MASK);
+  return (v >= threshold) || ((v & SUSPEND_MASK) == SUSPEND_MASK);
 }
 
 gsize
