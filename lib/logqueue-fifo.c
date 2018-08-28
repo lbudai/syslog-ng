@@ -299,6 +299,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
 
   g_static_mutex_lock(&self->super.lock);
 
+  //TODO: REMOVE, dead code
   if (thread_id >= 0)
     log_queue_fifo_move_input_unlocked(self, thread_id);
 
@@ -315,21 +316,6 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
       g_static_mutex_unlock(&self->super.lock);
 
       log_msg_unref(msg);
-    }
-  else if (!path_options->flow_control_requested && memory_limit_reached)
-    {
-      stats_counter_inc(self->super.dropped_messages);
-      g_static_mutex_unlock(&self->super.lock);
-
-      LogPipe *src = log_msg_get_source(msg);
-      msg_debug("window_mem_limit reached, dropping message",
-                src ? log_pipe_location_tag(src)
-                : evt_tag_str("unknown source", "") ,
-                evt_tag_int("queue_len", log_queue_fifo_get_length(&self->super)),
-                evt_tag_int("log_fifo_size", self->qoverflow_size),
-                evt_tag_str("persist_name", self->super.persist_name));
-
-      log_msg_drop(msg, path_options, AT_PROCESSED);
     }
   return;
 }
