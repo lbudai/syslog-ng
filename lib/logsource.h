@@ -179,6 +179,8 @@ log_source_free_to_send(LogSource *self)
 {
   if (!self->flow_controlled)
     return TRUE;
+  if (!self->window_size.counter)
+    return FALSE;
   return !window_size_counter_suspended(&self->window_size);
 //  return !log_source_window__mem_limit_reached(self); TODO
 }

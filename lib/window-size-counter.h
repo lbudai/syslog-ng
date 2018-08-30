@@ -27,17 +27,18 @@
 
 #include "syslog-ng.h"
 #include "atomic-gssize.h"
+#include "stats/stats-counter.h"
 
 typedef struct _WindowSizeCounter WindowSizeCounter;
 
 struct _WindowSizeCounter
 {
-  atomic_gssize counter;
+  StatsCounterItem *counter;
   gsize suspend_threshold;
 };
 
 
-void window_size_counter_init(WindowSizeCounter *c, gsize suspend_threshold);
+void window_size_counter_init(WindowSizeCounter *c, StatsCounterItem *ctr, gsize suspend_threshold);
 void window_size_counter_set(WindowSizeCounter *c, gsize value);
 gsize window_size_counter_get(WindowSizeCounter *c, gboolean *suspended);
 gsize window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended);

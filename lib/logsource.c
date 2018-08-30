@@ -28,6 +28,7 @@
 #include "timeutils.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-syslog.h"
+#include "stats/stats-cluster-single.h"
 #include "logmsg/tags.h"
 #include "ack_tracker.h"
 
@@ -234,25 +235,54 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
     }
 }
 
+static StatsCounterItem *
+_register_window_size_stats_ctr(LogSource *self)
+{
+  StatsCounterItem *ctr = NULL;
+
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set_with_name(&sc_key,
+      self->options->stats_source | SCS_SOURCE,
+      self->stats_id,
+      self->stats_instance,
+      "window_size");
+  stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &ctr);
+
+  return ctr;
+}
+
 static void
-_init_window_size_counter(LogSource *self)
+_init_window_size_counter_with_memory_limit(LogSource *self, StatsCounterItem *ctr)
+{
+  window_size_counter_init(&self->window_size, ctr, self->options->memory_limit);
+  window_size_counter_set(&self->window_size,  0);
+  msg_trace("init_window_size_counter with memory-limit");
+}
+
+static void
+_init_window_size_counter_with_count_limit(LogSource *self, StatsCounterItem *ctr)
+{
+  window_size_counter_init(&self->window_size, ctr, 0);
+  window_size_counter_set(&self->window_size, self->options->init_window_size);
+  msg_trace("init_window_size_counter with count-limit", evt_tag_int("window_size", self->options->init_window_size));
+}
+
+static void
+_init_window_size_counter(LogSource *self, StatsCounterItem *ctr)
 {
   g_assert(!(self->options->count_limit_set && self->options->memory_limit != 0));
 
   self->memory_limit = self->options->memory_limit;
   if (self->options->memory_limit == 0 && !self->options->count_limit_set)
     self->options->count_limit_set = TRUE;
+
   if (self->options->count_limit_set)
     {
-      window_size_counter_set(&self->window_size, self->options->init_window_size);
-      window_size_counter_init(&self->window_size, 0);
-      msg_trace("init_window_size_counter with count-limit", evt_tag_int("window_size", self->options->init_window_size));
+      _init_window_size_counter_with_count_limit(self, ctr);
       return;
     }
 
-  window_size_counter_set(&self->window_size, 0);
-  window_size_counter_init(&self->window_size, self->options->memory_limit);
-  msg_trace("init_window_size_counter with memory-limit");
+  _init_window_size_counter_with_memory_limit(self, ctr);
 }
 
 gboolean
@@ -266,6 +296,11 @@ log_source_init(LogPipe *s)
   stats_register_counter(self->options->stats_level, &sc_key,
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
+
+  StatsCounterItem *ctr = _register_window_size_stats_ctr(self);
+
+  _init_window_size_counter(self, ctr);
+
   stats_unlock();
 
   return TRUE;
@@ -543,7 +578,6 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.free_fn = log_source_free;
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
-  window_size_counter_set(&self->window_size, (gsize)-1);
   self->ack_tracker = NULL;
   self->flow_controlled = FC_UNSET;
 }

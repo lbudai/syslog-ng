@@ -46,13 +46,13 @@ window_size_counter_get_max(void)
 void
 window_size_counter_set(WindowSizeCounter *c, gsize value)
 {
-  atomic_gssize_set(&c->counter, value & COUNTER_MASK);
+  atomic_gssize_set(&c->counter->value, value & COUNTER_MASK);
 }
 
 gsize
 window_size_counter_get(WindowSizeCounter *c, gboolean *suspended)
 {
-  gsize v = atomic_gssize_get_unsigned(&c->counter);
+  gsize v = atomic_gssize_get_unsigned(&c->counter->value);
   if (suspended)
     *suspended = _is_suspended(v, c->suspend_threshold);
   return v & COUNTER_MASK;
@@ -61,7 +61,7 @@ window_size_counter_get(WindowSizeCounter *c, gboolean *suspended)
 gsize
 window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended)
 {
-  gsize v = (gsize)atomic_gssize_add(&c->counter, value);
+  gsize v = (gsize)atomic_gssize_add(&c->counter->value, value);
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value + value <= COUNTER_MAX);
   if (suspended)
@@ -73,7 +73,7 @@ window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended)
 gsize
 window_size_counter_sub(WindowSizeCounter *c, gsize value, gboolean *suspended)
 {
-  gsize v = (gsize)atomic_gssize_add(&c->counter, -1 * value);
+  gsize v = (gsize)atomic_gssize_add(&c->counter->value, -1 * value);
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value >= value);
   if (suspended)
@@ -85,24 +85,25 @@ window_size_counter_sub(WindowSizeCounter *c, gsize value, gboolean *suspended)
 void
 window_size_counter_suspend(WindowSizeCounter *c)
 {
-  atomic_gssize_or(&c->counter, SUSPEND_MASK);
+  atomic_gssize_or(&c->counter->value, SUSPEND_MASK);
 }
 
 void
 window_size_counter_resume(WindowSizeCounter *c)
 {
-  atomic_gssize_and(&c->counter, RESUME_MASK);
+  atomic_gssize_and(&c->counter->value, RESUME_MASK);
 }
 
 gboolean
 window_size_counter_suspended(WindowSizeCounter *c)
 {
-  gsize v = atomic_gssize_get_unsigned(&c->counter);
+  gsize v = atomic_gssize_get_unsigned(&c->counter->value);
   return _is_suspended(v, c->suspend_threshold);
 }
 
 void
-window_size_counter_init(WindowSizeCounter *c, gsize suspend_threshold)
+window_size_counter_init(WindowSizeCounter *c, StatsCounterItem *counter, gsize suspend_threshold)
 {
+  c->counter = counter;
   c->suspend_threshold = suspend_threshold;
 }

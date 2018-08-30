@@ -29,7 +29,8 @@
 Test(test_window_size_counter, suspend_resume)
 {
   WindowSizeCounter c;
-  window_size_counter_init(&c, 0);
+  StatsCounterItem ctr;
+  window_size_counter_init(&c, &ctr, 0);
   gboolean suspended = FALSE;
   window_size_counter_set(&c, 10);
   cr_expect_not(window_size_counter_suspended(&c));
@@ -58,7 +59,8 @@ Test(test_window_size_counter, suspend_resume)
 Test(test_window_size_counter, negative_value)
 {
   WindowSizeCounter c;
-  window_size_counter_init(&c, 0);
+  StatsCounterItem ctr;
+  window_size_counter_init(&c, &ctr, 0);
   gboolean suspended = FALSE;
   window_size_counter_set(&c, -1);
   gint v = (gint)window_size_counter_get(&c, &suspended);
@@ -68,7 +70,8 @@ Test(test_window_size_counter, negative_value)
 Test(test_window_size_counter, suspend_resume_multiple_times)
 {
   WindowSizeCounter c;
-  window_size_counter_init(&c, 0);
+  StatsCounterItem ctr;
+  window_size_counter_init(&c, &ctr, 0);
 
   window_size_counter_set(&c, window_size_counter_get_max());
 
