@@ -297,8 +297,6 @@ log_source_post(LogSource *self, LogMessage *msg)
           //TODO: add window_size_counter::is_threshold_reached
           if (window_size_counter_get(&self->window_size, NULL) == self->window_size.suspend_threshold)
             {
-              LogPathOptions local_options;
-//              log_msg_break_ack(msg, &path_options, &local_options);
               log_msg_unref(msg);
               msg_warning("queue is full, dropping messages");
               return;
@@ -309,8 +307,6 @@ log_source_post(LogSource *self, LogMessage *msg)
            //TODO: add window_size_counter::is_threshold_reached...
            if (window_size_counter_get(&self->window_size, NULL) >= self->window_size.suspend_threshold)
              {
-               LogPathOptions local_options;
-//               log_msg_break_ack(msg, &path_options, &local_options);
                log_msg_unref(msg);
                msg_warning("queue is full, dropping messages");
                return;
@@ -363,10 +359,12 @@ log_source_post(LogSource *self, LogMessage *msg)
 
   if (self->flow_controlled != FC_UNSET)
     path_options.flow_control_requested = TRUE;
+  if (self->flow_controlled == FC_UNSET)
+    path_options.path_discovery_on = TRUE;
   log_pipe_queue(&self->super, msg, &path_options);
   if (self->flow_controlled == FC_UNSET)
     {
-      self->flow_controlled = path_options.flow_control_requested ? FC_ENABLED : FC_DISABLED;
+      self->flow_controlled = msg->flow_controlled ? FC_ENABLED : FC_DISABLED;
       msg_trace("TRACE", evt_tag_str("flow_controlled:", self->flow_controlled ? "true": "false"));
     }
   log_msg_refcache_stop();
