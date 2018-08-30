@@ -175,6 +175,7 @@ struct _LogMessage
   LogMessage *original;
   gsize allocated_bytes;
   gboolean mem_limited_src;
+  gboolean flow_controlled;
 
   /* message parts */
 

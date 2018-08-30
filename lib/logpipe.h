@@ -207,10 +207,12 @@ struct _LogPathOptions
   gboolean flow_control_requested;
 
   gboolean *matched;
+
+  gboolean path_discovery_on;
 };
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL }
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, FALSE }
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, FALSE }
 
 struct _LogPipe
 {
@@ -349,6 +351,8 @@ log_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 
   if (G_UNLIKELY(s->flags & (PIF_HARD_FLOW_CONTROL)))
     {
+      if (path_options->path_discovery_on)
+        msg->flow_controlled |= TRUE;
       LogPathOptions local_path_options = *path_options;
 
       local_path_options.flow_control_requested = 1;
