@@ -105,11 +105,10 @@ static void
 late_ack_tracker_track_msg(AckTracker *s, LogMessage *msg)
 {
   LateAckTracker *self = (LateAckTracker *)s;
-  LogSource *source = self->super.source;
+//  LogSource *source = self->super.source;
 
   g_assert(self->pending_ack_record != NULL);
-
-  log_pipe_ref((LogPipe *)source);
+  log_pipe_ref((LogPipe *)self->super.source);
 
   msg->ack_record = (AckRecord *)self->pending_ack_record;
 
@@ -136,14 +135,19 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
   guint32 ack_range_length = 0;
 
   if (ack_type == AT_SUSPENDED)
-    log_source_flow_control_suspend(self->super.source);
+    log_source_flow_control_suspend(/*self->super.source*/(LogSource *)msg->source);
+
+  msg_trace("TRACE", evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("ack_record", "%p", msg->ack_record));
+  msg_trace("TRACE/II.", evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("ack_record", "%p", msg->ack_record));
+
 
   late_ack_tracker_lock(s);
   {
     ack_rec->acked = TRUE;
 
     GList *it = NULL;
-
     g_assert(self->ack_record_storage != NULL && self->ack_record_storage_tail != NULL);
 
     for (it = self->ack_record_storage_tail; it != NULL && _ack_range_is_continuous(it->data); it = it->prev)
@@ -185,18 +189,18 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
             g_list_free_full(continuous_range_head, g_free);
           }
         if (ack_type == AT_SUSPENDED)
-          log_source_flow_control_adjust_when_suspended(self->super.source, ack_range_length);
+          log_source_flow_control_adjust_when_suspended(/*self->super.source*/(LogSource *)msg->source, ack_range_length);
         else
-          log_source_flow_control_adjust(self->super.source, ack_range_length);
+          log_source_flow_control_adjust(/*self->super.source*/(LogSource *)msg->source, ack_range_length);
 
         if (!self->ack_record_storage || g_list_length(self->ack_record_storage) == 0)
           late_ack_tracker_on_all_acked_call(s);
       }
   }
   late_ack_tracker_unlock(s);
-
   log_msg_unref(msg);
-  if (s->source->options->count_limit_set)
+
+//  if (s->source->options->count_limit_set)
     log_pipe_unref((LogPipe *)self->super.source);
 }
 

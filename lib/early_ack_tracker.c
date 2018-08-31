@@ -67,7 +67,7 @@ early_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_typ
     log_source_flow_control_suspend(self->super.source);
 
   log_msg_unref(msg);
-  if (s->source->options->count_limit_set)
+//  if (s->source->options->count_limit_set)
     log_pipe_unref((LogPipe *)self->super.source);
 }
 

@@ -57,7 +57,7 @@ log_source_window_empty(LogSource *self)
 static inline void
 _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment, gboolean last_ack_type_is_suspended)
 {
-  if (!self->options->count_limit_set)
+  if (!self->options || !self->options->count_limit_set)
     return;
   gboolean suspended;
   gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
@@ -324,6 +324,8 @@ log_source_deinit(LogPipe *s)
 void
 log_source_post(LogSource *self, LogMessage *msg)
 {
+  msg->source = log_pipe_ref((LogPipe *)self);
+
   if (self->flow_controlled == FC_DISABLED)
     {
       msg_trace("TRACE:flow_controll is disabled");
@@ -350,7 +352,6 @@ log_source_post(LogSource *self, LogMessage *msg)
       msg_trace("not dropping messages");
     }
 
-
   log_msg_refcache_start_producer(msg);
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
@@ -364,6 +365,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
   msg->mem_limited_src = !self->options->count_limit_set;
+  msg_trace("TRACE", evt_tag_str("mem_limited_src", msg->mem_limited_src ? "TRUE" : "FALSE"));
 
   if (self->options->count_limit_set)
     {
