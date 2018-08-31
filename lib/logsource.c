@@ -256,7 +256,7 @@ _init_window_size_counter_with_memory_limit(LogSource *self, StatsCounterItem *c
 {
   window_size_counter_init(&self->window_size, ctr, self->options->memory_limit);
   window_size_counter_set(&self->window_size,  0);
-  msg_trace("init_window_size_counter with memory-limit");
+  msg_trace("init_window_size_counter with memory-limit", evt_tag_long("memory_limit", self->options->memory_limit));
 }
 
 static void
