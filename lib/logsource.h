@@ -77,7 +77,7 @@ struct _LogSource
   gboolean pos_tracked;
   gchar *stats_id;
   gchar *stats_instance;
-  WindowSizeCounter window_size;
+  WindowSizeCounter *window_size;
   StatsCounterItem *last_message_seen;
   StatsCounterItem *recvd_messages;
   guint32 last_ack_count;
@@ -120,7 +120,7 @@ log_source_increment_memory_usage(LogSource *self, gsize value)
   if (!self || self->memory_limit == 0)
     return;
 
-  gsize old = (gsize)window_size_counter_add(&self->window_size, value, NULL);
+  gsize old = (gsize)window_size_counter_add(self->window_size, value, NULL);
   msg_trace("memory_usage.inc",
             evt_tag_long("memory_limit", self->memory_limit),
             evt_tag_long("memory_usage", old),
@@ -132,7 +132,7 @@ log_source_increment_memory_usage(LogSource *self, gsize value)
                 log_pipe_location_tag(&self->super),
                 evt_tag_int("memory_limit", self->memory_limit),
                 evt_tag_int("memory_usage", old));
-      window_size_counter_suspend(&self->window_size);
+      window_size_counter_suspend(self->window_size);
     }
 }
 
@@ -143,7 +143,7 @@ log_source_decrement_memory_usage(LogSource *self, gsize value)
     return;
 
   gboolean suspended;
-  gsize old = (gsize)window_size_counter_sub(&self->window_size, value, &suspended);
+  gsize old = (gsize)window_size_counter_sub(self->window_size, value, &suspended);
   msg_trace("memory_usage.dec",
             evt_tag_long("memory_limit", self->memory_limit),
             evt_tag_long("memory_usage", old),
@@ -157,7 +157,7 @@ log_source_decrement_memory_usage(LogSource *self, gsize value)
                 log_pipe_location_tag(&self->super),
                 evt_tag_int("memory_limit", self->memory_limit),
                 evt_tag_int("memory_usage", old));
-      window_size_counter_resume(&self->window_size);
+      window_size_counter_resume(self->window_size);
       log_source_wakeup(self);
     }
 
@@ -169,7 +169,7 @@ static inline gboolean
 log_source_memory_limit_reached(LogSource *self)
 {
   gboolean suspended;
-  gboolean res = window_size_counter_get(&self->window_size, &suspended) >= self->memory_limit;
+  gboolean res = window_size_counter_get(self->window_size, &suspended) >= self->memory_limit;
 
   return res || suspended; //TODO: check
 }
@@ -179,7 +179,9 @@ log_source_free_to_send(LogSource *self)
 {
   if (!self->flow_controlled)
     return TRUE;
-  return !window_size_counter_suspended(&self->window_size);
+  if (!self->window_size)
+    return FALSE;
+  return !window_size_counter_suspended(self->window_size);
 //  return !log_source_window__mem_limit_reached(self); TODO
 }
 

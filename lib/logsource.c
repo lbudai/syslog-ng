@@ -60,7 +60,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
   if (!self->options || !self->options->count_limit_set)
     return;
   gboolean suspended;
-  gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
+  gsize old_window_size = window_size_counter_add(self->window_size, window_size_increment, &suspended);
 
   msg_trace("Window size adjustment",
             evt_tag_int("old_window_size", old_window_size),
@@ -71,7 +71,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
 
   gboolean need_to_resume_counter = !last_ack_type_is_suspended && suspended;
   if (need_to_resume_counter)
-    window_size_counter_resume(&self->window_size);
+    window_size_counter_resume(self->window_size);
   if (old_window_size == 0 || need_to_resume_counter)
     log_source_wakeup(self);
 
@@ -176,7 +176,7 @@ log_source_flow_control_suspend(LogSource *self)
             log_pipe_location_tag(&self->super),
             evt_tag_str("function", __FUNCTION__));
 
-  window_size_counter_suspend(&self->window_size);
+  window_size_counter_suspend(self->window_size);
 }
 
 void
@@ -240,13 +240,11 @@ _register_window_size_stats_ctr(LogSource *self)
 {
   StatsCounterItem *ctr = NULL;
 
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set_with_name(&sc_key,
-      self->options->stats_source | SCS_SOURCE,
+  ctr = stats_cluster_single_register_counter(self->options->stats_source | SCS_SOURCE,
       self->stats_id,
       self->stats_instance,
-      "window_size");
-  stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &ctr);
+      "window_size",
+      sizeof(WindowSizeCounter));
 
   return ctr;
 }
@@ -254,16 +252,16 @@ _register_window_size_stats_ctr(LogSource *self)
 static void
 _init_window_size_counter_with_memory_limit(LogSource *self)
 {
-  window_size_counter_init(&self->window_size, self->options->memory_limit);
-  window_size_counter_set(&self->window_size,  0);
+  window_size_counter_init(self->window_size, self->options->memory_limit);
+  window_size_counter_set(self->window_size,  0);
   msg_trace("init_window_size_counter with memory-limit", evt_tag_long("memory_limit", self->options->memory_limit));
 }
 
 static void
 _init_window_size_counter_with_count_limit(LogSource *self)
 {
-  window_size_counter_init(&self->window_size, 0);
-  window_size_counter_set(&self->window_size, self->options->init_window_size);
+  window_size_counter_init(self->window_size, 0);
+  window_size_counter_set(self->window_size, self->options->init_window_size);
   msg_trace("init_window_size_counter with count-limit", evt_tag_int("window_size", self->options->init_window_size));
 }
 
@@ -296,9 +294,7 @@ log_source_init(LogPipe *s)
   stats_register_counter(self->options->stats_level, &sc_key,
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
-
-//TODO:  StatsCounterItem *ctr = _register_window_size_stats_ctr(self);
-
+  self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
   _init_window_size_counter(self);
 
   stats_unlock();
@@ -332,7 +328,7 @@ log_source_post(LogSource *self, LogMessage *msg)
       if (self->options->count_limit_set)
         {
           //TODO: add window_size_counter::is_threshold_reached
-          if (window_size_counter_get(&self->window_size, NULL) == self->window_size.suspend_threshold)
+          if (window_size_counter_get(self->window_size, NULL) == self->window_size->suspend_threshold)
             {
               log_msg_unref(msg);
               msg_warning("queue is full, dropping messages");
@@ -342,7 +338,7 @@ log_source_post(LogSource *self, LogMessage *msg)
       else
         {
            //TODO: add window_size_counter::is_threshold_reached...
-           if (window_size_counter_get(&self->window_size, NULL) >= self->window_size.suspend_threshold)
+           if (window_size_counter_get(self->window_size, NULL) >= self->window_size->suspend_threshold)
              {
                log_msg_unref(msg);
                msg_warning("queue is full, dropping messages");
@@ -369,7 +365,7 @@ log_source_post(LogSource *self, LogMessage *msg)
 
   if (self->options->count_limit_set)
     {
-      old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
+      old_window_size = window_size_counter_sub(self->window_size, 1, NULL);
 
       if (G_UNLIKELY(old_window_size == 1))
         {
