@@ -93,6 +93,7 @@ struct _StatsCounterGroup
 
 struct _StatsCounterGroupInit
 {
+  gsize sizeof_counter_type;
   const gchar **counter_names;
   void (*init)(StatsCounterGroupInit *self, StatsCounterGroup *counter_group);
   gboolean (*equals)(const StatsCounterGroupInit *self, const StatsCounterGroupInit *other);

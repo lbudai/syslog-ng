@@ -36,6 +36,14 @@ _counter_group_free(StatsCounterGroup *counter_group)
   g_free(counter_group->counters);
 }
 
+static gboolean
+_group_init_equals(const StatsCounterGroupInit *self, const StatsCounterGroupInit *other)
+{
+  g_assert(self != NULL && other != NULL);
+  return (self->init == other->init) && (self->sizeof_counter_type == other->sizeof_counter_type);
+}
+
+
 static void
 _counter_group_init(StatsCounterGroupInit *self, StatsCounterGroup *counter_group)
 {
@@ -50,7 +58,10 @@ stats_cluster_single_key_set(StatsClusterKey *key, guint16 component, const gcha
 {
   stats_cluster_key_set(key, component, id, instance, (StatsCounterGroupInit)
   {
-    tag_names,_counter_group_init
+    .sizeof_counter_type = sizeof(StatsCounterItem),
+    .counter_names = tag_names,
+    .init = _counter_group_init,
+    .equals = _group_init_equals
   });
 }
 
@@ -64,17 +75,18 @@ _counter_group_with_name_free(StatsCounterGroup *counter_group)
 static void
 _counter_group_init_with_name(StatsCounterGroupInit *self, StatsCounterGroup *counter_group)
 {
-  counter_group->counters = g_new0(StatsCounterItem, SC_TYPE_SINGLE_MAX);
+  counter_group->counters = g_malloc0_n(SC_TYPE_SINGLE_MAX, self->sizeof_counter_type);
   counter_group->capacity = SC_TYPE_SINGLE_MAX;
   counter_group->counter_names = self->counter_names;
   counter_group->free_fn = _counter_group_with_name_free;
 }
 
 static gboolean
-_group_init_equals(const StatsCounterGroupInit *self, const StatsCounterGroupInit *other)
+_group_init_equals_with_name(const StatsCounterGroupInit *self, const StatsCounterGroupInit *other)
 {
-  g_assert(self != NULL && other != NULL && self->counter_names != NULL && other->counter_names != NULL);
-  return (self->init == other->init) && (g_strcmp0(self->counter_names[0], other->counter_names[0]) == 0);
+  gboolean res = _group_init_equals(self, other);
+  g_assert(self->counter_names != NULL && other->counter_names != NULL);
+  return res && (g_strcmp0(self->counter_names[0], other->counter_names[0]) == 0);
 }
 
 void
@@ -83,9 +95,11 @@ stats_cluster_single_key_set_with_name(StatsClusterKey *key, guint16 component, 
 {
   stats_cluster_key_set(key, component, id, instance, (StatsCounterGroupInit)
   {
-    tag_names, _counter_group_init_with_name, _group_init_equals
+    .sizeof_counter_type = sizeof(StatsCounterItem),
+    .counter_names = g_new0(const char *, 1), 
+    .init = _counter_group_init_with_name,
+    .equals = _group_init_equals_with_name
   });
-  key->counter_group_init.counter_names = g_new0(const char *, 1);
   key->counter_group_init.counter_names[0] = name;
 }
 
