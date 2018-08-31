@@ -252,23 +252,23 @@ _register_window_size_stats_ctr(LogSource *self)
 }
 
 static void
-_init_window_size_counter_with_memory_limit(LogSource *self, StatsCounterItem *ctr)
+_init_window_size_counter_with_memory_limit(LogSource *self)
 {
-  window_size_counter_init(&self->window_size, ctr, self->options->memory_limit);
+  window_size_counter_init(&self->window_size, self->options->memory_limit);
   window_size_counter_set(&self->window_size,  0);
   msg_trace("init_window_size_counter with memory-limit", evt_tag_long("memory_limit", self->options->memory_limit));
 }
 
 static void
-_init_window_size_counter_with_count_limit(LogSource *self, StatsCounterItem *ctr)
+_init_window_size_counter_with_count_limit(LogSource *self)
 {
-  window_size_counter_init(&self->window_size, ctr, 0);
+  window_size_counter_init(&self->window_size, 0);
   window_size_counter_set(&self->window_size, self->options->init_window_size);
   msg_trace("init_window_size_counter with count-limit", evt_tag_int("window_size", self->options->init_window_size));
 }
 
 static void
-_init_window_size_counter(LogSource *self, StatsCounterItem *ctr)
+_init_window_size_counter(LogSource *self)
 {
   g_assert(!(self->options->count_limit_set && self->options->memory_limit != 0));
 
@@ -278,11 +278,11 @@ _init_window_size_counter(LogSource *self, StatsCounterItem *ctr)
 
   if (self->options->count_limit_set)
     {
-      _init_window_size_counter_with_count_limit(self, ctr);
+      _init_window_size_counter_with_count_limit(self);
       return;
     }
 
-  _init_window_size_counter_with_memory_limit(self, ctr);
+  _init_window_size_counter_with_memory_limit(self);
 }
 
 gboolean
@@ -297,9 +297,9 @@ log_source_init(LogPipe *s)
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
 
-  StatsCounterItem *ctr = _register_window_size_stats_ctr(self);
+//TODO:  StatsCounterItem *ctr = _register_window_size_stats_ctr(self);
 
-  _init_window_size_counter(self, ctr);
+  _init_window_size_counter(self);
 
   stats_unlock();
 
