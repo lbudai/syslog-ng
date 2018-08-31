@@ -24,6 +24,7 @@
 
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster.h"
+#include "stats/stats-registry.h"
 
 static const gchar *tag_names[SC_TYPE_SINGLE_MAX] =
 {
@@ -101,5 +102,19 @@ stats_cluster_single_key_set_with_name(StatsClusterKey *key, guint16 component, 
     .equals = _group_init_equals_with_name
   });
   key->counter_group_init.counter_names[0] = name;
+}
+
+StatsCounterItem*
+stats_cluster_single_register_counter(guint16 component, const gchar *id,
+                                      const gchar *instance, const gchar *name,
+                                      gsize sizeof_counter)
+{
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set_with_name(&sc_key,component,id,instance,name);
+  sc_key.counter_group_init.sizeof_counter_type = sizeof_counter;
+  StatsCounterItem *ctr = NULL;
+  stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &ctr);
+
+  return ctr;
 }
 
