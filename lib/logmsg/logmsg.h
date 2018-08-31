@@ -171,6 +171,7 @@ struct _LogMessage
   gint ack_and_ref_and_abort_and_suspended;
 
   AckRecord *ack_record;
+  LogPipe *source;
   LMAckFunc ack_func;
   LogMessage *original;
   gsize allocated_bytes;

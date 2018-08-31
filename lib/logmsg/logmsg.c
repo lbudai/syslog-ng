@@ -1216,7 +1216,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
   log_msg_write_protect(msg);
 
   memcpy(self, msg, sizeof(*msg));
-  msg->allocated_bytes = allocated_bytes;
+  self->allocated_bytes = allocated_bytes;
   log_source_increment_memory_usage((LogSource *)log_msg_get_source(msg), msg->allocated_bytes);
 
   msg_debug("Message was cloned",
@@ -1228,6 +1228,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
 
   /* reference the original message */
   self->original = log_msg_ref(msg);
+  self->source = log_pipe_ref(msg->source);
   self->ack_and_ref_and_abort_and_suspended = LOGMSG_REFCACHE_REF_TO_VALUE(1) + LOGMSG_REFCACHE_ACK_TO_VALUE(
                                                 0) + LOGMSG_REFCACHE_ABORT_TO_VALUE(0);
   self->cur_node = 0;
@@ -1372,8 +1373,9 @@ log_msg_free(LogMessage *self)
       LogSource *src = (LogSource *)log_msg_get_source(self);
 
       log_source_decrement_memory_usage(src, self->allocated_bytes);
-      log_pipe_unref(&src->super);//TODO...
     }
+  if (self->source)
+    log_pipe_unref(self->source);
 
   if (log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD) && self->payload)
     nv_table_unref(self->payload);
@@ -1899,12 +1901,7 @@ log_msg_source_free_to_send(LogMessage *msg)
 LogPipe *
 log_msg_get_source(LogMessage *msg)
 {
-  if (!msg->ack_record || !msg->ack_record->tracker)
-    return NULL;
-
-  LogSource *src = ack_tracker_get_source(msg->ack_record->tracker);
-
-  return &src->super;
+  return msg->source;
 }
 
 #ifdef __linux__
