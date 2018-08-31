@@ -27,59 +27,108 @@
 #include "syslog-ng.h"
 #include "atomic-gssize.h"
 
-typedef struct _StatsCounterItem
+typedef struct _StatsCounterItem StatsCounterItem;
+
+struct _StatsCounterItem
 {
   atomic_gssize value;
   gchar *name;
   gint type;
-} StatsCounterItem;
-
+  void (*add)(StatsCounterItem *self, gsize add);
+  void (*sub)(StatsCounterItem *self, gsize sub);
+  void (*inc)(StatsCounterItem *self);
+  void (*dec)(StatsCounterItem *self);
+  void (*set)(StatsCounterItem *self, gsize value);
+  gsize (*get)(StatsCounterItem *self);
+};
 
 static inline void
 stats_counter_add(StatsCounterItem *counter, gssize add)
 {
-  if (counter)
-    atomic_gssize_add(&counter->value, add);
+  if (!counter)
+    return;
+
+  if (!counter->add)
+    {
+      atomic_gssize_add(&counter->value, add);
+      return;
+    }
+
+  counter->add(counter, add);
 }
 
 static inline void
 stats_counter_sub(StatsCounterItem *counter, gssize sub)
 {
-  if (counter)
-    atomic_gssize_sub(&counter->value, sub);
+  if (!counter)
+    return;
+
+  if (!counter->sub)
+    {
+      atomic_gssize_sub(&counter->value, sub);
+      return;
+    }
+
+  counter->sub(counter, sub);
 }
 
 static inline void
 stats_counter_inc(StatsCounterItem *counter)
 {
-  if (counter)
-    atomic_gssize_inc(&counter->value);
+  if (!counter)
+    return;
+
+  if (!counter->inc)
+    {
+      atomic_gssize_inc(&counter->value);
+      return;
+    }
+
+  counter->inc(counter);
 }
 
 static inline void
 stats_counter_dec(StatsCounterItem *counter)
 {
-  if (counter)
-    atomic_gssize_dec(&counter->value);
+  if (!counter)
+    return;
+
+  if (!counter->dec)
+    {
+      atomic_gssize_dec(&counter->value);
+      return;
+    }
+
+  counter->dec(counter);
 }
 
 /* NOTE: this is _not_ atomic and doesn't have to be as sets would race anyway */
 static inline void
 stats_counter_set(StatsCounterItem *counter, gsize value)
 {
-  if (counter)
-    atomic_gssize_racy_set(&counter->value, value);
+  if (!counter)
+    return;
+
+  if (!counter->set)
+    {
+      atomic_gssize_racy_set(&counter->value, value);
+      return;
+    }
+
+  counter->set(counter, value);
 }
 
 /* NOTE: this is _not_ atomic and doesn't have to be as sets would race anyway */
 static inline gsize
 stats_counter_get(StatsCounterItem *counter)
 {
-  gssize result = 0;
+  if (!counter)
+    return 0;
 
-  if (counter)
-    result = atomic_gssize_get_unsigned(&counter->value);
-  return result;
+  if (!counter->get)
+   return atomic_gssize_get_unsigned(&counter->value);
+
+  return counter->get(counter);
 }
 
 static inline gchar *
