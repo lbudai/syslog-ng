@@ -46,13 +46,13 @@ window_size_counter_get_max(void)
 void
 window_size_counter_set(WindowSizeCounter *c, gsize value)
 {
-  atomic_gssize_set(&c->counter->value, value & COUNTER_MASK);
+  atomic_gssize_set(&c->super.value, value & COUNTER_MASK);
 }
 
 gsize
 window_size_counter_get(WindowSizeCounter *c, gboolean *suspended)
 {
-  gsize v = atomic_gssize_get_unsigned(&c->counter->value);
+  gsize v = atomic_gssize_get_unsigned(&c->super.value);
   if (suspended)
     *suspended = _is_suspended(v, c->suspend_threshold);
   return v & COUNTER_MASK;
@@ -61,7 +61,7 @@ window_size_counter_get(WindowSizeCounter *c, gboolean *suspended)
 gsize
 window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended)
 {
-  gsize v = (gsize)atomic_gssize_add(&c->counter->value, value);
+  gsize v = (gsize)atomic_gssize_add(&c->super.value, value);
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value + value <= COUNTER_MAX);
   if (suspended)
@@ -73,7 +73,7 @@ window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended)
 gsize
 window_size_counter_sub(WindowSizeCounter *c, gsize value, gboolean *suspended)
 {
-  gsize v = (gsize)atomic_gssize_add(&c->counter->value, -1 * value);
+  gsize v = (gsize)atomic_gssize_add(&c->super.value, -1 * value);
   gsize old_value = v & COUNTER_MASK;
   g_assert (old_value >= value);
   if (suspended)
@@ -85,25 +85,76 @@ window_size_counter_sub(WindowSizeCounter *c, gsize value, gboolean *suspended)
 void
 window_size_counter_suspend(WindowSizeCounter *c)
 {
-  atomic_gssize_or(&c->counter->value, SUSPEND_MASK);
+  atomic_gssize_or(&c->super.value, SUSPEND_MASK);
 }
 
 void
 window_size_counter_resume(WindowSizeCounter *c)
 {
-  atomic_gssize_and(&c->counter->value, RESUME_MASK);
+  atomic_gssize_and(&c->super.value, RESUME_MASK);
 }
 
 gboolean
 window_size_counter_suspended(WindowSizeCounter *c)
 {
-  gsize v = atomic_gssize_get_unsigned(&c->counter->value);
+  gsize v = atomic_gssize_get_unsigned(&c->super.value);
   return _is_suspended(v, c->suspend_threshold);
 }
 
-void
-window_size_counter_init(WindowSizeCounter *c, StatsCounterItem *counter, gsize suspend_threshold)
+static void
+_add(StatsCounterItem *s, gsize add)
 {
-  c->counter = counter;
+  WindowSizeCounter *self = (WindowSizeCounter *)s;
+  window_size_counter_add(self, add, NULL);
+}
+
+static void
+_sub(StatsCounterItem *s, gsize sub)
+{
+  WindowSizeCounter *self = (WindowSizeCounter *)s;
+  window_size_counter_sub(self, sub, NULL);
+}
+
+static void
+_inc(StatsCounterItem *s)
+{
+  _add(s, 1);
+}
+
+static void
+_dec(StatsCounterItem *s)
+{
+  _sub(s, 1);
+}
+
+static void
+_set(StatsCounterItem *s, gsize value)
+{
+  WindowSizeCounter *self = (WindowSizeCounter *)s;
+  window_size_counter_set(self, value);
+}
+
+static gsize
+_get(StatsCounterItem *s)
+{
+  WindowSizeCounter *self = (WindowSizeCounter *)s;
+  return window_size_counter_get(self, NULL);
+}
+
+static void
+_init_vtable(StatsCounterItem *s)
+{
+  s->add = _add;
+  s->sub = _sub;
+  s->inc = _inc;
+  s->dec = _dec;
+  s->set = _set;
+  s->get = _get;
+}
+
+void
+window_size_counter_init(WindowSizeCounter *c, gsize suspend_threshold)
+{
+  _init_vtable(&c->super);
   c->suspend_threshold = suspend_threshold;
 }

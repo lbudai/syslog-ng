@@ -33,12 +33,12 @@ typedef struct _WindowSizeCounter WindowSizeCounter;
 
 struct _WindowSizeCounter
 {
-  StatsCounterItem *counter;
+  StatsCounterItem super;
   gsize suspend_threshold;
 };
 
 
-void window_size_counter_init(WindowSizeCounter *c, StatsCounterItem *ctr, gsize suspend_threshold);
+void window_size_counter_init(WindowSizeCounter *c, gsize suspend_threshold);
 void window_size_counter_set(WindowSizeCounter *c, gsize value);
 gsize window_size_counter_get(WindowSizeCounter *c, gboolean *suspended);
 gsize window_size_counter_add(WindowSizeCounter *c, gsize value, gboolean *suspended);
