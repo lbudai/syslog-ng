@@ -80,6 +80,7 @@ struct _LogSource
   WindowSizeCounter *window_size;
   StatsCounterItem *last_message_seen;
   StatsCounterItem *recvd_messages;
+  StatsCounterItem *dropped_messages;
   guint32 last_ack_count;
   guint32 ack_count;
   gsize memory_limit;

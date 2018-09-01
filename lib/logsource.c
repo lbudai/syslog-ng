@@ -294,7 +294,13 @@ log_source_init(LogPipe *s)
   stats_register_counter(self->options->stats_level, &sc_key,
                          SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_register_counter(self->options->stats_level, &sc_key, SC_TYPE_STAMP, &self->last_message_seen);
+  stats_register_counter(self->options->stats_level, &sc_key,
+                         SC_TYPE_DROPPED, &self->dropped_messages);
+
   self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
+
+  self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
+
   _init_window_size_counter(self);
 
   stats_unlock();
@@ -312,6 +318,8 @@ log_source_deinit(LogPipe *s)
   stats_cluster_logpipe_key_set(&sc_key, self->options->stats_source | SCS_SOURCE, self->stats_id, self->stats_instance);
   stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_STAMP, &self->last_message_seen);
+  stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
+  //TODO: unregister window_size_ctr
   stats_unlock();
 
   return TRUE;
@@ -331,6 +339,7 @@ log_source_post(LogSource *self, LogMessage *msg)
           if (window_size_counter_get(self->window_size, NULL) == self->window_size->suspend_threshold)
             {
               log_msg_unref(msg);
+              stats_counter_inc(self->dropped_messages);
               msg_warning("queue is full, dropping messages");
               return;
             }
@@ -341,6 +350,7 @@ log_source_post(LogSource *self, LogMessage *msg)
            if (window_size_counter_get(self->window_size, NULL) >= self->window_size->suspend_threshold)
              {
                log_msg_unref(msg);
+               stats_counter_inc(self->dropped_messages);
                msg_warning("queue is full, dropping messages");
                return;
              }
