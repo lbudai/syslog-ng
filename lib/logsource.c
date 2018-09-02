@@ -249,6 +249,19 @@ _register_window_size_stats_ctr(LogSource *self)
   return ctr;
 }
 
+static StatsCounterItem *
+_unregister_window_size_stats_ctr(LogSource *self)
+{
+  StatsCounterItem *ctr = NULL;
+
+  ctr = stats_cluster_single_unregister_counter(self->options->stats_source | SCS_SOURCE,
+      self->stats_id,
+      self->stats_instance,
+      "window_size",
+      sizeof(WindowSizeCounter));
+
+  return ctr;
+}
 static void
 _init_window_size_counter_with_memory_limit(LogSource *self)
 {
@@ -298,8 +311,10 @@ log_source_init(LogPipe *s)
                          SC_TYPE_DROPPED, &self->dropped_messages);
 
   self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
-
-  self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
+  msg_trace("TRACE",
+            evt_tag_str("function", __FUNCTION__),
+            evt_tag_printf("self", "%p", self),
+            evt_tag_printf("window_size", "%p", self->window_size));
 
   _init_window_size_counter(self);
 
@@ -319,7 +334,7 @@ log_source_deinit(LogPipe *s)
   stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_STAMP, &self->last_message_seen);
   stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
-  //TODO: unregister window_size_ctr
+  self->window_size = (WindowSizeCounter *)_unregister_window_size_stats_ctr(self);//messages are in the queue (waiting for sendind...) will contain a deinited source with a 0x0 ctr
   stats_unlock();
 
   return TRUE;
