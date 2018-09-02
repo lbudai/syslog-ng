@@ -40,6 +40,8 @@ void stats_cluster_single_key_set_with_name(StatsClusterKey *key, guint16 compon
 
 StatsCounterItem* stats_cluster_single_register_counter(guint16 component, const gchar *id,
                                             const gchar *instance, const gchar *name, gsize sizeof_counter);
+StatsCounterItem* stats_cluster_single_unregister_counter(guint16 component, const gchar *id,
+                                             const gchar *instance, const gchar *name, gsize sizeof_counter);
 
 #endif
 

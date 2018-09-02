@@ -118,3 +118,16 @@ stats_cluster_single_register_counter(guint16 component, const gchar *id,
   return ctr;
 }
 
+StatsCounterItem *
+stats_cluster_single_unregister_counter(guint16 component, const gchar *id,
+                                        const gchar *instance, const gchar *name,
+                                        gsize sizeof_counter)
+{
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set_with_name(&sc_key,component,id,instance,name);
+  sc_key.counter_group_init.sizeof_counter_type = sizeof_counter;
+  StatsCounterItem *ctr = NULL;
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &ctr);
+
+  return ctr;
+}
