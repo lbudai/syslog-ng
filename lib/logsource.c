@@ -355,6 +355,7 @@ log_source_post(LogSource *self, LogMessage *msg)
             {
               log_msg_unref(msg);
               stats_counter_inc(self->dropped_messages);
+              stats_counter_inc(self->recvd_messages);
               msg_warning("queue is full, dropping messages");
               return;
             }
@@ -366,6 +367,7 @@ log_source_post(LogSource *self, LogMessage *msg)
              {
                log_msg_unref(msg);
                stats_counter_inc(self->dropped_messages);
+               stats_counter_inc(self->recvd_messages);
                msg_warning("queue is full, dropping messages");
                return;
              }
