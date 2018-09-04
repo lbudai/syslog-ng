@@ -334,7 +334,7 @@ log_source_deinit(LogPipe *s)
   stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->recvd_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_STAMP, &self->last_message_seen);
   stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &self->dropped_messages);
-  self->window_size = (WindowSizeCounter *)_unregister_window_size_stats_ctr(self);//messages are in the queue (waiting for sendind...) will contain a deinited source with a 0x0 ctr
+//  self->window_size = (WindowSizeCounter *)_unregister_window_size_stats_ctr(self);//messages are in the queue (waiting for sendind...) will contain a deinited source with a 0x0 ctr
   stats_unlock();
 
   return TRUE;
