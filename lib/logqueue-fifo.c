@@ -299,18 +299,14 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
 
   g_static_mutex_lock(&self->super.lock);
   {
-    gboolean memory_limit_reached = log_msg_source_reached_memory_limit(msg);
-    if (path_options->flow_control_requested || !memory_limit_reached)
-      {
-        node = log_msg_alloc_queue_node(msg, path_options);
+    node = log_msg_alloc_queue_node(msg, path_options);
 
-        iv_list_add_tail(&node->list, &self->qoverflow_wait);
-        self->qoverflow_wait_len++;
-        log_queue_push_notify(&self->super);
-        stats_counter_inc(self->super.queued_messages);
-        stats_counter_add(self->super.memory_usage, log_msg_get_size(msg));
-        log_msg_unref(msg);
-      }
+    iv_list_add_tail(&node->list, &self->qoverflow_wait);
+    self->qoverflow_wait_len++;
+    log_queue_push_notify(&self->super);
+    stats_counter_inc(self->super.queued_messages);
+    stats_counter_add(self->super.memory_usage, log_msg_get_size(msg));
+    log_msg_unref(msg);
   }
   g_static_mutex_unlock(&self->super.lock);
 }
