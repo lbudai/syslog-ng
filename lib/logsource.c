@@ -353,6 +353,7 @@ log_source_post(LogSource *self, LogMessage *msg)
           //TODO: add window_size_counter::is_threshold_reached
           if (window_size_counter_get(self->window_size, NULL) == self->window_size->suspend_threshold)
             {
+              ack_tracker_save_pending_bookmark(self->ack_tracker);
               log_msg_unref(msg);
               stats_counter_inc(self->dropped_messages);
               stats_counter_inc(self->recvd_messages);
@@ -365,6 +366,7 @@ log_source_post(LogSource *self, LogMessage *msg)
            //TODO: add window_size_counter::is_threshold_reached...
            if (window_size_counter_get(self->window_size, NULL) >= self->window_size->suspend_threshold)
              {
+               ack_tracker_save_pending_bookmark(self->ack_tracker);
                log_msg_unref(msg);
                stats_counter_inc(self->dropped_messages);
                stats_counter_inc(self->recvd_messages);
@@ -375,12 +377,11 @@ log_source_post(LogSource *self, LogMessage *msg)
       msg_trace("not dropping messages");
     }
 
+  ack_tracker_track_msg(self->ack_tracker, msg);
   log_msg_refcache_start_producer(msg);
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   gint old_window_size;
-
-  ack_tracker_track_msg(self->ack_tracker, msg);
 
   /* NOTE: we start by enabling flow-control, thus we need an acknowledgement */
   path_options.ack_needed = TRUE;
@@ -417,16 +418,21 @@ log_source_post(LogSource *self, LogMessage *msg)
       msg_trace("log_source_post", evt_tag_long("allocated_bytes", msg->allocated_bytes));
     }
 
-  if (self->flow_controlled != FC_UNSET)
-    path_options.flow_control_requested = TRUE;
+/*  if (self->flow_controlled != FC_UNSET)
+    path_options.flow_control_requested = TRUE;*/
   if (self->flow_controlled == FC_UNSET)
     path_options.path_discovery_on = TRUE;
   log_pipe_queue(&self->super, msg, &path_options);
+
   if (self->flow_controlled == FC_UNSET)
     {
       self->flow_controlled = msg->flow_controlled ? FC_ENABLED : FC_DISABLED;
       msg_trace("TRACE", evt_tag_str("flow_controlled:", self->flow_controlled ? "true": "false"));
     }
+
+  if (!self->flow_controlled)
+    ack_tracker_save_pending_bookmark(self->ack_tracker);
+
   log_msg_refcache_stop();
 }
 
