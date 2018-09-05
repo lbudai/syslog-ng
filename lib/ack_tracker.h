@@ -34,6 +34,8 @@ struct _AckTracker
   Bookmark *(*request_bookmark)(AckTracker *self);
   void (*track_msg)(AckTracker *self, LogMessage *msg);
   void (*manage_msg_ack)(AckTracker *self, LogMessage *msg, AckType ack_type);
+  void (*save_bookmark)(LogMessage *msg);
+  void (*save_pending_bookmark)(AckTracker *s);
   void (*free_fn)(AckTracker *self);
 };
 
@@ -61,6 +63,13 @@ ack_tracker_request_bookmark(AckTracker *self)
 }
 
 static inline void
+ack_tracker_save_pending_bookmark(AckTracker *self)
+{
+  if (self->save_pending_bookmark)
+    self->save_pending_bookmark(self);
+}
+
+static inline void
 ack_tracker_track_msg(AckTracker *self, LogMessage *msg)
 {
   self->track_msg(self, msg);
@@ -70,6 +79,13 @@ static inline void
 ack_tracker_manage_msg_ack(AckTracker *self, LogMessage *msg, AckType ack_type)
 {
   self->manage_msg_ack(self, msg, ack_type);
+}
+
+static inline void
+ack_tracker_save_bookmark(AckTracker *self, LogMessage *msg)
+{
+  if (self->save_bookmark)
+    self->save_bookmark(msg);
 }
 
 static inline LogSource *

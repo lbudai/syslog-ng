@@ -204,6 +204,29 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
     log_pipe_unref((LogPipe *)self->super.source);
 }
 
+static void
+late_ack_tracker_save_bookmark(LogMessage *msg)
+{
+  LateAckRecord *ack_record = (LateAckRecord *)msg->ack_record;
+  if (!ack_record)
+    return;
+
+  Bookmark *bookmark = &ack_record->bookmark;
+  bookmark->save(bookmark);
+}
+
+static void
+late_tracker_save_pending_bookmark(AckTracker *s)
+{
+  LateAckTracker *self = (LateAckTracker *)s;
+
+  if (!self->pending_ack_record)
+    return;
+
+  Bookmark *bookmark = &self->pending_ack_record->bookmark;
+  bookmark->save(bookmark);
+}
+
 gboolean
 late_ack_tracker_is_empty(AckTracker *s)
 {
@@ -269,6 +292,8 @@ _setup_callbacks(LateAckTracker *self)
   self->super.request_bookmark = late_ack_tracker_request_bookmark;
   self->super.track_msg = late_ack_tracker_track_msg;
   self->super.manage_msg_ack = late_ack_tracker_manage_msg_ack;
+  self->super.save_bookmark = late_ack_tracker_save_bookmark;
+  self->super.save_pending_bookmark  = late_tracker_save_pending_bookmark;
   self->super.free_fn = late_ack_tracker_free;
 }
 
