@@ -1580,6 +1580,13 @@ log_msg_ack(LogMessage *self, const LogPathOptions *path_options, AckType ack_ty
     }
 }
 
+void
+log_msg_save_bookmark(LogMessage *msg)
+{
+  if (msg->ack_record)
+    ack_tracker_save_bookmark(msg->ack_record->tracker, msg);
+}
+
 /*
  * Break out of an acknowledgement chain. The incoming message is
  * ACKed and a new path options structure is returned that can be used
