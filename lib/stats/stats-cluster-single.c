@@ -131,3 +131,15 @@ stats_cluster_single_unregister_counter(guint16 component, const gchar *id,
 
   return ctr;
 }
+
+gboolean
+stats_cluster_single_contains_counter(guint16 component, const gchar *id,
+                                      const gchar *instance, const gchar *name,
+                                      gsize sizeof_counter)
+{
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set_with_name(&sc_key,component,id,instance,name);
+  sc_key.counter_group_init.sizeof_counter_type = sizeof_counter;
+  return stats_contains_counter(&sc_key, SC_TYPE_SINGLE_VALUE);
+}
+

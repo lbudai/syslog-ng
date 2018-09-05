@@ -173,6 +173,18 @@ stats_register_counter(gint stats_level, const StatsClusterKey *sc_key, gint typ
   return _register_counter(stats_level, sc_key, type, FALSE, counter);
 }
 
+gboolean
+stats_contains_counter(const StatsClusterKey *sc_key, gint type)
+{
+  StatsCluster *sc = g_hash_table_lookup(stats_cluster_container.static_clusters, sc_key);
+  if (!sc)
+    return FALSE;
+
+  g_assert(type < sc->counter_group.capacity);
+
+  return stats_cluster_is_alive(sc, type);
+}
+
 StatsCluster *
 stats_register_counter_and_index(gint stats_level, const StatsClusterKey *sc_key, gint type,
                                  StatsCounterItem **counter)

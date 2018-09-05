@@ -43,5 +43,8 @@ StatsCounterItem* stats_cluster_single_register_counter(guint16 component, const
 StatsCounterItem* stats_cluster_single_unregister_counter(guint16 component, const gchar *id,
                                              const gchar *instance, const gchar *name, gsize sizeof_counter);
 
+gboolean stats_cluster_single_contains_counter(guint16 component, const gchar *id,
+                                            const gchar *instance, const gchar *name, gsize sizeof_counter);
+
 #endif
 

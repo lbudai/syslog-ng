@@ -34,6 +34,8 @@ void stats_lock(void);
 void stats_unlock(void);
 gboolean stats_check_level(gint level);
 StatsCluster *stats_register_counter(gint level, const StatsClusterKey *sc_key, gint type, StatsCounterItem **counter);
+gboolean stats_contains_counter(const StatsClusterKey *sc_key, gint type);
+
 StatsCluster *stats_register_counter_and_index(gint level, const StatsClusterKey *sc_key, gint type,
                                                StatsCounterItem **counter);
 StatsCluster *stats_register_dynamic_counter(gint stats_level, const StatsClusterKey *sc_key, gint type,
