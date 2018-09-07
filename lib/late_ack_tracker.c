@@ -281,6 +281,8 @@ late_ack_tracker_free(AckTracker *s)
   g_static_mutex_free(&self->storage_mutex);
 
   g_list_free_full(self->ack_record_storage, g_free);
+  if (self->pending_ack_record)
+    g_free(self->pending_ack_record);
   self->ack_record_storage = NULL;
 
   g_free(self);
