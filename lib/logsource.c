@@ -316,6 +316,10 @@ log_source_init(LogPipe *s)
             evt_tag_printf("self", "%p", self),
             evt_tag_printf("window_size", "%p", self->window_size));
     }
+  else
+    {
+      self->window_size = (WindowSizeCounter *)_register_window_size_stats_ctr(self);
+    }
 
   stats_unlock();
 
@@ -594,7 +598,6 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
   self->pos_tracked = pos_tracked;
   log_pipe_detach_expr_node(&self->super);
   log_pipe_attach_expr_node(&self->super, expr_node);
-  _init_window_size_counter(self);
 
   _create_ack_tracker_if_not_exists(self, pos_tracked);
 }
