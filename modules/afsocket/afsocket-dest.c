@@ -483,6 +483,8 @@ afsocket_dd_setup_writer(AFSocketDestDriver *self)
                          &self->writer_options,
                          self->super.super.id,
                          afsocket_dd_stats_instance(self));
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__));
   log_writer_set_queue(self->writer, log_dest_driver_acquire_queue(
                          &self->super, afsocket_dd_format_qfile_name(self)));
 

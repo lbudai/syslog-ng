@@ -177,6 +177,10 @@ log_writer_get_queue(LogWriter *s)
 void
 log_writer_set_queue(LogWriter *self, LogQueue *queue)
 {
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("old_queue", "%p", self->queue),
+      evt_tag_printf("new_queue", "%p", queue));
   log_queue_unref(self->queue);
   self->queue = log_queue_ref(queue);
   log_queue_set_use_backlog(self->queue, TRUE);

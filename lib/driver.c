@@ -251,8 +251,19 @@ log_dest_driver_acquire_queue_method(LogDestDriver *self, const gchar *persist_n
   if (persist_name)
     queue = cfg_persist_config_fetch(cfg, persist_name);
 
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_str("persist_name", persist_name),
+      evt_tag_printf("queue", "%p", queue));
+
   if (!queue)
     {
+      msg_trace("TRACE",
+        evt_tag_str("function::new_queue", __FUNCTION__),
+        evt_tag_str("persist_name", persist_name),
+        evt_tag_printf("queue", "%p", queue));
+
+
       queue = log_queue_fifo_new(self->log_fifo_size < 0 ? cfg->log_fifo_size : self->log_fifo_size, persist_name);
       log_queue_set_throttle(queue, self->throttle);
     }
@@ -264,10 +275,17 @@ static void
 log_dest_driver_release_queue_method(LogDestDriver *self, LogQueue *q)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super);
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_str("queue_name", q->persist_name ? q->persist_name : "NULL"),
+      evt_tag_printf("queue", "%p", q));
 
   /* we only save the LogQueue instance if it contains data */
   if (q->persist_name && log_queue_keep_on_reload(q) > 0)
     {
+      msg_trace("TRACE",
+          evt_tag_str("function::save queue to persist", __FUNCTION__),
+          evt_tag_printf("queue", "%p", q));
       cfg_persist_config_add(cfg, q->persist_name, q, (GDestroyNotify) log_queue_unref, FALSE);
     }
   else

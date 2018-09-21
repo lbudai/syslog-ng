@@ -45,6 +45,11 @@ log_queue_memory_usage_sub(LogQueue *self, gsize value)
 void
 log_queue_queued_messages_add(LogQueue *self, gsize value)
 {
+  msg_trace("TRACE", evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("cached_queued_messages(before)", self->stats_cache.queued_messages),
+      evt_tag_long("queued_messages(before)", stats_counter_get(self->queued_messages)),
+      evt_tag_long("value", value));
   stats_counter_add(self->queued_messages, value);
   self->stats_cache.queued_messages += value;
 }
@@ -52,6 +57,11 @@ log_queue_queued_messages_add(LogQueue *self, gsize value)
 void
 log_queue_queued_messages_sub(LogQueue *self, gsize value)
 {
+  msg_trace("TRACE", evt_tag_str("function", __FUNCTION__),
+      evt_tag_long("cached_queued_messages(before)", self->stats_cache.queued_messages),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("queued_messages(before)", stats_counter_get(self->queued_messages)),
+      evt_tag_long("value", value));
   stats_counter_sub(self->queued_messages, value);
   self->stats_cache.queued_messages -= value;
 }
@@ -59,6 +69,11 @@ log_queue_queued_messages_sub(LogQueue *self, gsize value)
 void
 log_queue_queued_messages_inc(LogQueue *self)
 {
+  msg_trace("TRACE", evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("cached_queued_messages(before)", self->stats_cache.queued_messages),
+      evt_tag_long("queued_messages(before)", stats_counter_get(self->queued_messages)));
+
   stats_counter_inc(self->queued_messages);
   self->stats_cache.queued_messages++;
 }
@@ -66,6 +81,11 @@ log_queue_queued_messages_inc(LogQueue *self)
 void
 log_queue_queued_messages_dec(LogQueue *self)
 {
+  msg_trace("TRACE", evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("cached_queued_messages(before)", self->stats_cache.queued_messages),
+      evt_tag_long("queued_messages(before)", stats_counter_get(self->queued_messages)));
+
   stats_counter_dec(self->queued_messages);
   self->stats_cache.queued_messages--;
 }
@@ -215,8 +235,14 @@ _register_common_counters(LogQueue *self, gint stats_level, const StatsClusterKe
 {
   stats_register_counter(stats_level, sc_key, SC_TYPE_QUEUED, &self->queued_messages);
   stats_register_counter_and_index(STATS_LEVEL1, sc_key, SC_TYPE_MEMORY_USAGE, &self->memory_usage);
-  stats_counter_add(self->queued_messages, self->stats_cache.queued_messages);
+
+  stats_counter_add(self->queued_messages, self->stats_cache.queued_messages /*log_queue_get_length(self)*/);
   stats_counter_add(self->memory_usage, self->stats_cache.memory_usage);
+
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("cached_queued_messages", self->stats_cache.queued_messages));
 }
 
 void
@@ -231,6 +257,10 @@ log_queue_register_stats_counters(LogQueue *self, gint stats_level, const StatsC
 static void
 _unregister_common_counters(LogQueue *self, const StatsClusterKey *sc_key)
 {
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self),
+      evt_tag_long("cached_queued_messages", self->stats_cache.queued_messages));
   stats_counter_sub(self->queued_messages, self->stats_cache.queued_messages);
   stats_counter_sub(self->memory_usage, self->stats_cache.memory_usage);
   stats_unregister_counter(sc_key, SC_TYPE_QUEUED, &self->queued_messages);
@@ -264,6 +294,9 @@ log_queue_init_instance(LogQueue *self, const gchar *persist_name)
 void
 log_queue_free_method(LogQueue *self)
 {
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__),
+      evt_tag_printf("self", "%p", self));
   g_static_mutex_free(&self->lock);
   g_free(self->persist_name);
   g_free(self);

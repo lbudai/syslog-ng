@@ -176,6 +176,9 @@ log_dest_driver_acquire_queue(LogDestDriver *self, const gchar *persist_name)
 {
   LogQueue *q;
 
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__));
+
   q = self->acquire_queue(self, persist_name);
   if (q)
     {

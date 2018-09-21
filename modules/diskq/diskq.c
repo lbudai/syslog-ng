@@ -57,6 +57,9 @@ _acquire_queue(LogDestDriver *dd, const gchar *persist_name)
   gchar *qfile_name;
   gboolean success;
 
+  msg_trace("TRACE",
+      evt_tag_str("function", __FUNCTION__));
+
   if (persist_name)
     queue = cfg_persist_config_fetch(cfg, persist_name);
 
