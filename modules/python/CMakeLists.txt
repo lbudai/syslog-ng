@@ -39,6 +39,8 @@ set(PYTHON_SOURCES
     python-debugger.h
     python-logparser.h
     python-logparser.c
+    python-source.h
+    python-source.c
     compat/compat-python.c
     ${CMAKE_CURRENT_BINARY_DIR}/python-grammar.c
     ${CMAKE_CURRENT_BINARY_DIR}/python-grammar.h
