@@ -27,6 +27,8 @@
 #include "messages.h"
 #include "str-utils.h"
 
+#include <datetime.h>
+
 int
 py_is_log_message(PyObject *obj)
 {
@@ -254,12 +256,63 @@ _logmessage_get_keys_method(PyLogMessage *self)
   return keys;
 }
 
+static PyLogMessage *
+py_log_message_set_pri(PyLogMessage *self, PyObject *args, PyObject *kwrds)
+{
+  guint pri;
+
+  static const gchar *kwlist[] = {"pri", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwrds, "I", (gchar **) kwlist, &pri))
+    return NULL;
+
+  self->msg->pri = pri;
+
+  Py_INCREF(self);
+  return self;
+}
+
+static PyLogMessage *
+py_log_message_set_timestamp(PyLogMessage *self, PyObject *args, PyObject *kwrds)
+{
+  PyDateTime_DateTime *pytimestamp;
+
+  static const gchar *kwlist[] = {"timestamp", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwrds, "O", (gchar **) kwlist, &pytimestamp))
+    return NULL;
+
+  if (!PyDateTime_Check((PyObject *) pytimestamp))
+    {
+      PyErr_Format(PyExc_TypeError, "datetime expected in the first parameter");
+      return NULL;
+    }
+
+  // TODO: python2-compatible POSIX timestamp conversion
+
+  Py_INCREF(self);
+  return self;
+}
+
+static PyObject *
+py_log_message_parse(PyObject *_none, PyObject *args, PyObject *kwrds)
+{
+  const gchar *raw_msg;
+  gint raw_msg_length;
+
+  static const gchar *kwlist[] = {"raw_msg", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwrds, "s#", (gchar **) kwlist, &raw_msg, &raw_msg_length))
+    return NULL;
+
+  // TODO: parse_options...
+
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef py_log_message_methods[] =
 {
-  {
-    "keys", (PyCFunction)_logmessage_get_keys_method,
-    METH_NOARGS, "Return keys."
-  },
+  { "keys", (PyCFunction)_logmessage_get_keys_method, METH_NOARGS, "Return keys." },
+  { "set_pri", (PyCFunction)py_log_message_set_pri, METH_VARARGS | METH_KEYWORDS, "Set priority" },
+  { "set_timestamp", (PyCFunction)py_log_message_set_timestamp, METH_VARARGS | METH_KEYWORDS, "Set timestamp" },
+  { "parse", (PyCFunction)py_log_message_parse, METH_STATIC|METH_VARARGS|METH_KEYWORDS, "Parse and create LogMessage" },
   {NULL}
 };
 
@@ -280,6 +333,8 @@ PyTypeObject py_log_message_type =
 void
 py_log_message_init(void)
 {
+  PyDateTime_IMPORT;
+
   PyType_Ready(&py_log_message_type);
   PyModule_AddObject(PyImport_AddModule("syslogng"), "LogMessage", (PyObject *) &py_log_message_type);
 }
