@@ -28,6 +28,7 @@
 #include "python-tf.h"
 #include "python-logmsg.h"
 #include "python-source.h"
+#include "python-fetcher.h"
 #include "python-global-code-loader.h"
 #include "python-debugger.h"
 
@@ -47,6 +48,11 @@ static Plugin python_plugins[] =
   {
     .type = LL_CONTEXT_SOURCE,
     .name = "python",
+    .parser = &python_parser,
+  },
+  {
+    .type = LL_CONTEXT_SOURCE,
+    .name = "python_fetcher",
     .parser = &python_parser,
   },
   {
@@ -76,6 +82,7 @@ _py_init_interpreter(void)
       PyEval_InitThreads();
       py_log_message_init();
       py_log_source_init();
+      py_log_fetcher_init();
       py_global_code_loader_init();
       PyEval_SaveThread();
 
