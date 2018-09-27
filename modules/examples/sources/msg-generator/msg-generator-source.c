@@ -105,6 +105,7 @@ _send_like_hell(void *cookie)
 {
   main_loop_assert_main_thread();
 
+  msg_error("---------------------send_like_hell");
   MsgGeneratorSource *self = (MsgGeneratorSource *) cookie;
 
   _send_generated_message(self);
@@ -128,6 +129,11 @@ _wakeup(gpointer cookie)
   MsgGeneratorSource *self = (MsgGeneratorSource *) cookie;
 
   if (self->suspended) {
+    msg_error("---------------------wakeup real");
+
+    if (!log_source_free_to_send(&self->super))
+      msg_error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMPOSSIBLEEEEE");
+
     self->suspended = FALSE;
 
     if (!iv_task_registered(&self->send_like_hell))
