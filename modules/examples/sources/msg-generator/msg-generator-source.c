@@ -28,41 +28,33 @@
 #include "timeutils.h"
 #include "logmsg/logmsg.h"
 #include "template/templates.h"
+#include "mainloop.h"
 
 #include <iv.h>
+#include <iv_event.h>
 
 struct MsgGeneratorSource
 {
   LogSource super;
   MsgGeneratorSourceOptions *options;
-  struct iv_timer timer;
+  struct iv_task send_like_hell;
+  struct iv_event wakeup;
+  gboolean suspended;
 };
-
-static void
-_stop_timer(MsgGeneratorSource *self)
-{
-  if (iv_timer_registered(&self->timer))
-    iv_timer_unregister(&self->timer);
-}
-
-static void
-_start_timer(MsgGeneratorSource *self)
-{
-  iv_validate_now();
-  self->timer.expires = iv_now;
-  timespec_add_msec(&self->timer.expires, self->options->freq);
-
-  iv_timer_register(&self->timer);
-}
 
 static gboolean
 _init(LogPipe *s)
 {
+  main_loop_assert_main_thread();
+
   MsgGeneratorSource *self = (MsgGeneratorSource *) s;
   if (!log_source_init(s))
     return FALSE;
 
-  _start_timer(self);
+  if (!iv_task_registered(&self->send_like_hell))
+    iv_task_register(&self->send_like_hell);
+
+  iv_event_register(&self->wakeup);
 
   return TRUE;
 }
@@ -70,9 +62,14 @@ _init(LogPipe *s)
 static gboolean
 _deinit(LogPipe *s)
 {
+  main_loop_assert_main_thread();
+
   MsgGeneratorSource *self = (MsgGeneratorSource *) s;
 
-  _stop_timer(self);
+  iv_event_unregister(&self->wakeup);
+
+  if (iv_task_registered(&self->send_like_hell))
+    iv_task_unregister(&self->send_like_hell);
 
   return log_source_deinit(s);
 }
@@ -86,8 +83,7 @@ _free(LogPipe *s)
 static void
 _send_generated_message(MsgGeneratorSource *self)
 {
-  if (!log_source_free_to_send(&self->super))
-    return;
+  main_loop_assert_main_thread();
 
   LogMessage *msg = log_msg_new_empty();
   log_msg_set_value(msg, LM_V_MESSAGE, "-- Generated message. --", -1);
@@ -105,13 +101,48 @@ _send_generated_message(MsgGeneratorSource *self)
 }
 
 static void
-_timer_expired(void *cookie)
+_send_like_hell(void *cookie)
 {
+  main_loop_assert_main_thread();
+
   MsgGeneratorSource *self = (MsgGeneratorSource *) cookie;
 
   _send_generated_message(self);
 
-  _start_timer(self);
+  if (log_source_free_to_send(&self->super))
+    {
+      if (!iv_task_registered(&self->send_like_hell))
+        iv_task_register(&self->send_like_hell);
+    }
+  else
+    {
+      self->suspended = TRUE;
+    }
+}
+
+static void
+_wakeup(gpointer cookie)
+{
+  main_loop_assert_main_thread();
+
+  MsgGeneratorSource *self = (MsgGeneratorSource *) cookie;
+
+  if (self->suspended) {
+    self->suspended = FALSE;
+
+    if (!iv_task_registered(&self->send_like_hell))
+      iv_task_register(&self->send_like_hell);
+  }
+}
+
+static void
+_schedule_wakeup_please(LogSource *s)
+{
+  /* not main thread */
+  MsgGeneratorSource *self = (MsgGeneratorSource *) s;
+
+  if (self->super.super.flags & PIF_INITIALIZED)
+    iv_event_post(&self->wakeup);
 }
 
 gboolean
@@ -148,13 +179,18 @@ msg_generator_source_new(GlobalConfig *cfg)
   MsgGeneratorSource *self = g_new0(MsgGeneratorSource, 1);
   log_source_init_instance(&self->super, cfg);
 
-  IV_TIMER_INIT(&self->timer);
-  self->timer.cookie = self;
-  self->timer.handler = _timer_expired;
+  IV_TASK_INIT(&self->send_like_hell);
+  self->send_like_hell.cookie = self;
+  self->send_like_hell.handler = _send_like_hell;
+
+  IV_EVENT_INIT(&self->wakeup);
+  self->wakeup.cookie = self;
+  self->wakeup.handler = _wakeup;
 
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
+  self->super.wakeup = _schedule_wakeup_please;
 
   return self;
 }
