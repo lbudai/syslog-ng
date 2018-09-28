@@ -38,6 +38,7 @@ log_queue_memory_usage_add(LogQueue *self, gsize value)
 void
 log_queue_memory_usage_sub(LogQueue *self, gsize value)
 {
+  g_assert(!self->memory_usage || stats_counter_get(self->memory_usage) >= value);
   stats_counter_sub(self->memory_usage, value);
   atomic_gssize_sub(&self->stats_cache.memory_usage, value);
 }
@@ -52,6 +53,7 @@ log_queue_queued_messages_add(LogQueue *self, gsize value)
 void
 log_queue_queued_messages_sub(LogQueue *self, gsize value)
 {
+  g_assert(!self->queued_messages || stats_counter_get(self->queued_messages) >= value);
   stats_counter_sub(self->queued_messages, value);
   atomic_gssize_sub(&self->stats_cache.queued_messages, value);
 }
@@ -66,6 +68,8 @@ log_queue_queued_messages_inc(LogQueue *self)
 void
 log_queue_queued_messages_dec(LogQueue *self)
 {
+  g_assert(!self->queued_messages || stats_counter_get(self->queued_messages) >= 1);
+
   stats_counter_dec(self->queued_messages);
   atomic_gssize_dec(&self->stats_cache.queued_messages);
 }
