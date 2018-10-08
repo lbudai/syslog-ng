@@ -425,3 +425,11 @@ _py_string_from_string(const gchar *str, gssize len)
     return PyBytes_FromString(str);
 #endif
 }
+
+void
+_py_list_append_string(PyObject *list, const gchar *str)
+{
+  PyObject *py_str = PyBytes_FromString(str);
+  PyList_Append(list, py_str);
+  Py_XDECREF(py_str);
+}
