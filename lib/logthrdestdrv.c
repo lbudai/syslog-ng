@@ -290,6 +290,12 @@ _process_result_queued(LogThreadedDestWorker *self)
 }
 
 static void
+_process_result_retry(LogThreadedDestWorker *self)
+{
+  _rewind_batch(self);
+}
+
+static void
 _process_result(LogThreadedDestWorker *self, gint result)
 {
   switch (result)
@@ -316,6 +322,10 @@ _process_result(LogThreadedDestWorker *self, gint result)
 
     case LTR_QUEUED:
       _process_result_queued(self);
+      break;
+
+    case LTR_RETRY:
+      _process_result_retry(self);
       break;
 
     default:
