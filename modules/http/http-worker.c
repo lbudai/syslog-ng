@@ -189,6 +189,9 @@ _format_request_headers(HTTPDestinationWorker *self, LogMessage *msg)
   for (l = owner->headers; l; l = l->next)
     headers = curl_slist_append(headers, l->data);
 
+  if (owner->auth_header)
+    headers = curl_slist_append(headers, http_auth_header_get_as_string(owner->auth_header));
+
   return headers;
 }
 
@@ -343,6 +346,14 @@ _flush_on_target(HTTPDestinationWorker *self, HTTPLoadBalancerTarget *target)
                 evt_tag_int("worker_index", self->super.worker_index),
                 evt_tag_str("driver", owner->super.super.super.id),
                 log_pipe_location_tag(&owner->super.super.super.super));
+    }
+
+  //TODO: refactor!!!
+  if (http_code == 401 && owner->auth_header)
+    {
+      if (!http_auth_header_renew(owner->auth_header))
+        return LTR_DROP;
+      return LTR_RETRY;
     }
   return map_http_status_to_worker_status(self, target->url, http_code);
 }
