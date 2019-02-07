@@ -39,7 +39,7 @@ Test(http, test_error_codes)
 
   cr_assert_eq(map_http_status_to_worker_status(worker, url, 200), LTR_SUCCESS);
   cr_assert_eq(map_http_status_to_worker_status(worker, url, 301), LTR_ERROR);
-  cr_assert_eq(map_http_status_to_worker_status(worker, url, 404), LTR_DROP);
+  cr_assert_eq(map_http_status_to_worker_status(worker, url, 404), LTR_NOT_CONNECTED);
   cr_assert_eq(map_http_status_to_worker_status(worker, url, 500), LTR_ERROR);
 
   log_threaded_dest_worker_free(&worker->super);

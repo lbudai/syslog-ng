@@ -269,7 +269,7 @@ map_http_status_to_worker_status(HTTPDestinationWorker *self, const gchar *url, 
                  evt_tag_int("status_code", http_code),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
-      retval = LTR_DROP;
+      retval = LTR_NOT_CONNECTED;
       break;
     case 5:
       msg_notice("Server returned with a 5XX (server errors) status code, which indicates server failure. "
