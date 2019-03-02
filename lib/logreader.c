@@ -45,7 +45,6 @@ struct _LogReader
 
   struct iv_task restart_task;
   struct iv_event schedule_wakeup;
-  struct iv_event last_msg_sent_event;
   MainLoopIOWorkerJob io_job;
   gboolean watches_running:1, suspended:1;
   gint notify_code;
@@ -88,13 +87,6 @@ log_reader_apply_proto_and_poll_events(LogReader *self, LogProtoServer *proto, P
     log_proto_server_set_wakeup_cb(self->proto, (LogProtoServerWakeupFunc) log_reader_wakeup, self);
 
   self->poll_events = poll_events;
-}
-
-static void
-_last_msg_sent(gpointer s)
-{
-  LogReader *self = (LogReader *) s;
-  log_pipe_notify(self->control, NC_LAST_MSG_SENT, self);
 }
 
 static void
@@ -184,14 +176,6 @@ log_reader_wakeup(LogSource *s)
 }
 
 static void
-log_reader_window_empty(LogSource *s)
-{
-  LogReader *self = (LogReader *) s;
-  if (self->super.super.flags & PIF_INITIALIZED)
-    iv_event_post(&self->last_msg_sent_event);
-}
-
-static void
 log_reader_io_handle_in(gpointer s)
 {
   LogReader *self = (LogReader *) s;
@@ -229,10 +213,6 @@ log_reader_init_watches(LogReader *self)
   IV_EVENT_INIT(&self->schedule_wakeup);
   self->schedule_wakeup.cookie = self;
   self->schedule_wakeup.handler = log_reader_wakeup_triggered;
-
-  IV_EVENT_INIT(&self->last_msg_sent_event);
-  self->last_msg_sent_event.cookie = self;
-  self->last_msg_sent_event.handler = _last_msg_sent;
 
   IV_TIMER_INIT(&self->idle_timer);
   self->idle_timer.cookie = self;
@@ -508,7 +488,6 @@ log_reader_init(LogPipe *s)
 
   log_reader_update_watches(self);
   iv_event_register(&self->schedule_wakeup);
-  iv_event_register(&self->last_msg_sent_event);
 
   return TRUE;
 }
@@ -521,7 +500,6 @@ log_reader_deinit(LogPipe *s)
   main_loop_assert_main_thread();
 
   iv_event_unregister(&self->schedule_wakeup);
-  iv_event_unregister(&self->last_msg_sent_event);
   log_reader_stop_watches(self);
   log_reader_stop_idle_timer(self);
 
@@ -657,7 +635,6 @@ log_reader_new(GlobalConfig *cfg)
   self->super.super.deinit = log_reader_deinit;
   self->super.super.free_fn = log_reader_free;
   self->super.wakeup = log_reader_wakeup;
-  self->super.window_empty_cb = log_reader_window_empty;
   self->immediate_check = FALSE;
   log_reader_init_watches(self);
   g_static_mutex_init(&self->pending_proto_lock);
