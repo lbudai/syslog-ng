@@ -98,12 +98,23 @@ void iv_task_register(struct iv_task *_t)
   _t->handler(_t->cookie);
 }
 
+int iv_event_register(struct iv_event *this)
+{
+  return 0;
+}
+
 void file_reader_init_instance(FileReader *self, const gchar *filename,
                                FileReaderOptions *options, FileOpener *opener,
                                LogSrcDriver *owner, GlobalConfig *cfg)
 {
   log_pipe_init_instance(&self->super, cfg);
   return;
+}
+
+static void
+_wildcard_file_reader_post_last_msg_sent(WildcardFileReader *self)
+{
+  reader->file_state_event.deleted_file_finished_event.handler(self);
 }
 
 
@@ -161,7 +172,7 @@ Test(test_wildcard_file_reader, notif_eof)
 Test(test_wildcard_file_reader, notif_last_msg_sent)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
-  log_pipe_notify(&reader->super.super, NC_LAST_MSG_SENT, NULL);
+  _wildcard_file_reader_post_last_msg_sent(reader);
   cr_assert_eq(reader->file_state.last_msg_sent, TRUE);
 }
 
@@ -187,7 +198,7 @@ Test(test_wildcard_file_reader, status_change_deleted_eof_sent)
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  log_pipe_notify(&reader->super.super, NC_LAST_MSG_SENT, NULL);
+  _wildcard_file_reader_post_last_msg_sent(reader);
 
   cr_assert_eq(test_event->deleted_eof_called, TRUE);
   cr_assert_eq(test_event->finished_called, TRUE);
@@ -197,7 +208,7 @@ Test(test_wildcard_file_reader, status_finished_then_delete)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  log_pipe_notify(&reader->super.super, NC_LAST_MSG_SENT, NULL);
+  _wildcard_file_reader_post_last_msg_sent(reader);
   cr_assert_eq(test_event->deleted_eof_called, FALSE);
   cr_assert_eq(test_event->finished_called, FALSE);
 

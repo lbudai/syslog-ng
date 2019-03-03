@@ -26,6 +26,7 @@
 
 #include "file-reader.h"
 #include <iv.h>
+#include <iv_event.h>
 
 typedef struct _WildcardFileReader WildcardFileReader;
 
@@ -35,8 +36,11 @@ typedef struct _FileStateEvent
 {
   FileStateEventCallback deleted_file_finished;
   gpointer deleted_file_finished_user_data;
+  struct iv_event deleted_file_finished_event;
+
   FileStateEventCallback deleted_file_eof;
   gpointer deleted_file_eof_user_data;
+
 } FileStateEvent;
 
 typedef struct _FileState

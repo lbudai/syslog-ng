@@ -22,6 +22,16 @@
 
 #include "wildcard-file-reader.h"
 #include "mainloop.h"
+#include "late_ack_tracker.h"
+
+static void
+_schedule_last_msg_sent(gpointer s)
+{
+  WildcardFileReader *self = (WildcardFileReader *) s;
+
+  if (self->super.super.flags & PIF_INITIALIZED)
+    iv_event_post(&self->file_state_event.deleted_file_finished_event);
+}
 
 static gboolean
 _init(LogPipe *s)
@@ -30,7 +40,15 @@ _init(LogPipe *s)
   self->file_state.deleted = FALSE;
   self->file_state.eof = FALSE;
   self->file_state.last_msg_sent = TRUE;
-  return file_reader_init_method(s);
+  iv_event_register(&self->file_state_event.deleted_file_finished_event);
+
+  gboolean init_success = file_reader_init_method(s);
+
+  LogSource *source = (LogSource *) self->super.reader;
+  if (source)
+    late_ack_tracker_set_on_all_acked(source->ack_tracker, _schedule_last_msg_sent, self, NULL);
+
+  return init_success;
 }
 
 static gboolean
@@ -41,6 +59,9 @@ _deinit(LogPipe *s)
     {
       iv_task_unregister(&self->file_state_event_handler);
     }
+
+  iv_event_unregister(&self->file_state_event.deleted_file_finished_event);
+
   return file_reader_deinit_method(s);
 }
 
@@ -92,8 +113,10 @@ _set_eof(WildcardFileReader *self)
 }
 
 static void
-_set_last_msg_sent(WildcardFileReader *self)
+_set_last_msg_sent(gpointer s)
 {
+  WildcardFileReader *self = (WildcardFileReader *) s;
+
   self->file_state.last_msg_sent = TRUE;
   if (self->file_state.deleted)
     {
@@ -183,8 +206,14 @@ wildcard_file_reader_new(const gchar *filename, FileReaderOptions *options, File
   self->super.super.queue = _queue;
   self->super.super.notify = _notify;
   self->super.super.deinit = _deinit;
+
   IV_TASK_INIT(&self->file_state_event_handler);
   self->file_state_event_handler.cookie = self;
   self->file_state_event_handler.handler = _handle_file_state_event;
+
+  IV_EVENT_INIT(&self->file_state_event.deleted_file_finished_event);
+  self->file_state_event.deleted_file_finished_event.cookie = self;
+  self->file_state_event.deleted_file_finished_event.handler = _set_last_msg_sent;
+
   return self;
 }
