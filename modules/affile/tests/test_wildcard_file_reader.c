@@ -103,6 +103,11 @@ int iv_event_register(struct iv_event *this)
   return 0;
 }
 
+void iv_event_unregister(struct iv_event *this)
+{
+  ;
+}
+
 void file_reader_init_instance(FileReader *self, const gchar *filename,
                                FileReaderOptions *options, FileOpener *opener,
                                LogSrcDriver *owner, GlobalConfig *cfg)
@@ -132,6 +137,7 @@ _init(void)
 static void
 _teardown(void)
 {
+  log_pipe_deinit(&reader->super.super);
   log_pipe_unref(&reader->super.super);
   free(test_event);
   app_shutdown();
@@ -172,6 +178,7 @@ Test(test_wildcard_file_reader, notif_eof)
 Test(test_wildcard_file_reader, notif_last_msg_sent)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
+
   _wildcard_file_reader_post_last_msg_sent(reader);
   cr_assert_eq(reader->file_state.last_msg_sent, TRUE);
 }
