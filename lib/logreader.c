@@ -600,6 +600,12 @@ log_reader_reopen(LogReader *self, LogProtoServer *proto, PollEvents *poll_event
 }
 
 void
+log_reader_disable_bookmark_saving(LogReader *s)
+{
+  log_source_disable_bookmark_saving(&s->super);
+}
+
+void
 log_reader_close_proto(LogReader *self)
 {
   log_reader_reopen(self, NULL, NULL);
