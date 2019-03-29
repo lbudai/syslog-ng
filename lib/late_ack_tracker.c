@@ -260,12 +260,25 @@ late_ack_tracker_disable_bookmark_saving(AckTracker *s)
 }
 
 static void
+late_ack_tracker_enable_bookmark_saving(AckTracker *s)
+{
+  LateAckTracker *self = (LateAckTracker *)s;
+
+  late_ack_tracker_lock(s);
+  {
+    self->bookmark_saving_disabled = FALSE;
+  }
+  late_ack_tracker_unlock(s);
+}
+
+static void
 _setup_callbacks(LateAckTracker *self)
 {
   self->super.request_bookmark = late_ack_tracker_request_bookmark;
   self->super.track_msg = late_ack_tracker_track_msg;
   self->super.manage_msg_ack = late_ack_tracker_manage_msg_ack;
   self->super.disable_bookmark_saving = late_ack_tracker_disable_bookmark_saving;
+  self->super.enable_bookmark_saving = late_ack_tracker_enable_bookmark_saving;
   self->super.free_fn = late_ack_tracker_free;
 }
 
