@@ -146,6 +146,12 @@ log_source_disable_bookmark_saving(LogSource *self)
   ack_tracker_disable_bookmark_saving(self->ack_tracker);
 }
 
+void
+log_source_enable_bookmark_saving(LogSource *self)
+{
+  ack_tracker_enable_bookmark_saving(self->ack_tracker);
+}
+
 /**
  * log_source_msg_ack:
  *
