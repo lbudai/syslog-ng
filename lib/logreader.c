@@ -606,6 +606,12 @@ log_reader_disable_bookmark_saving(LogReader *s)
 }
 
 void
+log_reader_enable_bookmark_saving(LogReader *s)
+{
+  log_source_enable_bookmark_saving(&s->super);
+}
+
+void
 log_reader_close_proto(LogReader *self)
 {
   log_reader_reopen(self, NULL, NULL);
