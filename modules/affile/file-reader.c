@@ -235,6 +235,7 @@ _reopen_on_notify(LogPipe *s, gboolean recover_state)
   FileReader *self = (FileReader *) s;
 
   _deinit_sd_logreader(self);
+  log_reader_enable_bookmark_saving(self->reader);
   _reader_open_file(s, recover_state);
 }
 
