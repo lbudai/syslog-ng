@@ -30,6 +30,7 @@
 #include "logmsg/tags.h"
 #include "ack_tracker.h"
 #include "timeutils/misc.h"
+#include <iv.h>
 
 #include <math.h>
 #include <string.h>
@@ -254,6 +255,13 @@ _decrease_window(LogSource *self, double dec_factor)
       _log_source_reclaim_window(self, remaining_sub);
     }
 
+  msg_warning("DYNWINSTAT_PER_CONN::DEC",
+              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
+              evt_tag_int("offered_win", subtrahend),
+              evt_tag_printf("source", "%p", self),
+              evt_tag_int("future_req", remaining_sub)
+             );
+
   window_size_counter_sub(&self->window_size, subtrahend, NULL);
 
   msg_trace("Decreasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
@@ -267,10 +275,17 @@ static inline void
 _increase_window(LogSource *self, double inc_factor)
 {
   double requested_win = (double)self->full_window_size * inc_factor;
+
   gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, (gsize)requested_win);
 
   msg_trace("Increasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
             evt_tag_int("new_window", self->full_window_size + offered_dynamic), log_pipe_location_tag(&self->super));
+
+  msg_warning("DYNWINSTAT_PER_CONN::INC",
+              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
+              evt_tag_int("offered_win", -offered_dynamic),
+              evt_tag_printf("source", "%p", self)
+             );
 
   self->full_window_size += offered_dynamic;
 
@@ -394,6 +409,20 @@ log_source_dynamic_window_realloc(LogSource *self)
   gboolean window_almost_full = free_avg < self->full_window_size * (self->options->dynamic_window_decrease_threshold /
                                 100.0f);
 
+
+  msg_warning("DYNWINSTAT_PER_CONN",
+              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
+              evt_tag_int("sum_win", self->full_window_size),
+              evt_tag_int("used_win", self->full_window_size - window_size_counter_get(&self->window_size, NULL)),
+              evt_tag_int("free_avg", free_avg),
+              evt_tag_int("last_ack_rate", self->dynamic_window.last_ack_rate_avg),
+              evt_tag_int("current_ack_rate", current_ack_rate_avg),
+              evt_tag_printf("window_almost_empty", "%s", window_almost_empty ? "yes" : "no"),
+              evt_tag_printf("window_almost_full", "%s", window_almost_full ? "yes" : "no"),
+              evt_tag_printf("increase_window", "%s", have_to_increase ? "yes" : "no"),
+              evt_tag_printf("decrese_window", "%s", have_to_increase ? "no" : "yes"),
+              evt_tag_printf("source", "%p", self),
+              evt_tag_printf("change_factor", "%f", change_factor));
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
   self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
