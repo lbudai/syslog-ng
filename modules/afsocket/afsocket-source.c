@@ -533,12 +533,19 @@ _on_dynamic_window_timer_elapsed(gpointer cookie)
   for (GList *conn_it = self->connections; conn_it; conn_it = conn_it->next)
     {
       AFSocketSourceConnection *conn = (AFSocketSourceConnection *) conn_it->data;
-      if (self->dynamic_window_timer_tick >= self->dynamic_window_realloc_ticks)
+      if (self->dynamic_window_timer_tick >= self->dynamic_window_redistribute_ticks)
         {
+          msg_trace("Scheduling dynamic window redistribute");
+          log_source_schedule_dynamic_window_redistribute(&conn->reader->super);
+        }
+      else if (self->dynamic_window_timer_tick >= self->dynamic_window_realloc_ticks)
+        {
+          msg_trace("Scheduling dynamic window realloc");
           log_source_schedule_dynamic_window_realloc(&conn->reader->super);
         }
       else
         {
+          msg_trace("Updating dynamic window statistics");
           log_source_dynamic_window_update_statistics(&conn->reader->super);
         }
     }
