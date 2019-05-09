@@ -143,5 +143,6 @@ void log_source_global_init(void);
 
 /* protected */
 void log_source_dynamic_window_realloc(LogSource *self);
+void log_source_dynamic_window_redistribute(LogSource *self);
 
 #endif
