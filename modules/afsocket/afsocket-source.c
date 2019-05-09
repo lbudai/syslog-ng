@@ -301,6 +301,14 @@ afsocket_sd_set_dynamic_window_realloc_ticks(LogDriver *s, gint realloc_ticks)
   self->dynamic_window_realloc_ticks = realloc_ticks;
 }
 
+void
+afsocket_sd_set_dynamic_window_redistribute_ticks(LogDriver *s, gint redistribute_ticks)
+{
+  AFSocketSourceDriver *self = (AFSocketSourceDriver *) s;
+
+  self->dynamic_window_redistribute_ticks = redistribute_ticks;
+}
+
 static const gchar *
 afsocket_sd_format_name(const LogPipe *s)
 {
