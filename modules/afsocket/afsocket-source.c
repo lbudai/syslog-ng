@@ -530,7 +530,7 @@ static void
 _on_dynamic_window_timer_elapsed(gpointer cookie)
 {
   AFSocketSourceDriver *self = (AFSocketSourceDriver *)cookie;
-  for (GList *conn_it = self->connections; conn_it; conn_it = conn_it->next) //TODO: refactor
+  for (GList *conn_it = self->connections; conn_it; conn_it = conn_it->next)
     {
       AFSocketSourceConnection *conn = (AFSocketSourceConnection *) conn_it->data;
       if (self->dynamic_window_timer_tick >= self->dynamic_window_realloc_ticks)
@@ -542,7 +542,7 @@ _on_dynamic_window_timer_elapsed(gpointer cookie)
           log_source_dynamic_window_update_statistics(&conn->reader->super);
         }
     }
-  if (self->dynamic_window_timer_tick >= self->dynamic_window_realloc_ticks) //TODO: refactor
+  if (self->dynamic_window_timer_tick >= self->dynamic_window_realloc_ticks)
     self->dynamic_window_timer_tick = 0;
   self->dynamic_window_timer_tick++;
 
