@@ -388,7 +388,12 @@ log_reader_work_finished(void *s)
       /* reenable polling the source assuming that we're still in
        * business (e.g. the reader hasn't been uninitialized) */
 
-      if (self->realloc_window_after_fetch)
+      if (self->redistribute_window_after_fetch)
+        {
+          self->redistribute_window_after_fetch = FALSE;
+          log_source_dynamic_window_redistribute(s);
+        }
+      else if (self->realloc_window_after_fetch)
         {
           self->realloc_window_after_fetch = FALSE;
           log_source_dynamic_window_realloc(s);
@@ -670,6 +675,22 @@ _schedule_dynamic_window_realloc(LogSource *s)
   log_source_dynamic_window_realloc(s);
 }
 
+static void
+_schedule_dynamic_window_redistribute(LogSource *s)
+{
+  LogReader *self = (LogReader *)s;
+
+  msg_trace("LogReader::dynamic_window_redistribute called");
+
+  if (self->io_job.working)
+    {
+      self->redistribute_window_after_fetch = TRUE;
+      return;
+    }
+
+  log_source_dynamic_window_redistribute(s);
+}
+
 LogReader *
 log_reader_new(GlobalConfig *cfg)
 {
@@ -682,6 +703,7 @@ log_reader_new(GlobalConfig *cfg)
   self->super.wakeup = log_reader_wakeup;
   self->super.window_empty_cb = log_reader_window_empty;
   self->super.schedule_dynamic_window_realloc = _schedule_dynamic_window_realloc;
+  self->super.schedule_dynamic_window_redistribute = _schedule_dynamic_window_redistribute;
   self->immediate_check = FALSE;
   log_reader_init_watches(self);
   g_static_mutex_init(&self->pending_close_lock);
