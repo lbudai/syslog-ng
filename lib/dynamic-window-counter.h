@@ -34,8 +34,8 @@ struct _DynamicWindowCounter
 {
   GAtomicCounter ref_cnt;
 
-  gsize iw_size;
-  gsize window;
+  gsize iw_size; // total, dynamic-window-size(iw-size)
+  gsize window;  // free
 };
 
 DynamicWindowCounter *dynamic_window_counter_new(gsize iw_size);
