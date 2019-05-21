@@ -213,7 +213,17 @@ _decrease_window(LogSource *self)
 static inline void
 _increase_window(LogSource *self)
 {
-  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, self->full_window_size);
+  if (self->full_window_size == self->dynamic_window.window_ctr->max_window_per_client)
+    {
+      msg_trace("Cannot increase dynamic window, as the maximum window size has been reached.");
+      return;
+    }
+  gssize request = self->dynamic_window.window_ctr->max_window_per_client - self->full_window_size;
+  g_assert(request > 0);
+  if (request > self->full_window_size)
+    request = self->full_window_size;
+
+  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, request);
 
   msg_trace("Increasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
             evt_tag_int("new_window", self->full_window_size + offered_dynamic), log_pipe_location_tag(&self->super));
