@@ -215,7 +215,7 @@ _increase_window(LogSource *self)
 {
   if (self->full_window_size == self->dynamic_window.window_ctr->max_window_per_client)
     {
-      msg_trace("Cannot increase dynamic window, as the maximum window size has been reached.");
+      msg_info("Cannot increase dynamic window, as the maximum window size has been reached.");
       return;
     }
   gssize request = self->dynamic_window.window_ctr->max_window_per_client - self->full_window_size;
