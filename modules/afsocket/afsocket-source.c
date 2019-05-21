@@ -42,6 +42,7 @@ int deny_severity = 0;
 
 static const gfloat DYNAMIC_WINDOW_TIMER_MSECS = 100;
 static const gsize DYNAMIC_WINDOW_REALLOC_TICKS = 10;
+static const gsize DYNAMIC_IW_MAX_FETCH_LIMIT = 1000;
 
 typedef struct _AFSocketSourceConnection
 {
@@ -866,7 +867,14 @@ afsocket_sd_init_method(LogPipe *s)
     {
       if (self->dynamic_window_size != 0)
         {
+          if (self->reader_options.fetch_limit > DYNAMIC_IW_MAX_FETCH_LIMIT)
+            {
+              msg_warning("Fetch limit is too big. When dynamic-window() is used, fetch-limit() has a maximum value",
+                          evt_tag_int("max-fetch-limit", DYNAMIC_IW_MAX_FETCH_LIMIT));
+              self->reader_options.fetch_limit = DYNAMIC_IW_MAX_FETCH_LIMIT;
+            }
           self->dynamic_window_ctr = dynamic_window_counter_new(self->dynamic_window_size);
+          self->dynamic_window_ctr->max_window_per_client = self->reader_options.fetch_limit;
           dynamic_window_counter_init(self->dynamic_window_ctr);
         }
     }
@@ -950,6 +958,10 @@ afsocket_sd_init_instance(AFSocketSourceDriver *self,
    */
 
   self->reader_options.super.init_window_size = 1000;
+  if (self->dynamic_window_size > 0)
+    {
+      self->reader_options.fetch_limit = DYNAMIC_IW_MAX_FETCH_LIMIT;
+    }
 
   _init_watches(self);
 }
