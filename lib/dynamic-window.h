@@ -48,6 +48,8 @@ struct _DynamicWindow
 {
   DynamicWindowCounter *ctr;
   DynamicWindowStat stat;
+  DynamicWindowStat ack_rate;
+  gsize last_ack_rate_avg;
 };
 
 void dynamic_window_set_counter(DynamicWindow *self, DynamicWindowCounter *ctr);

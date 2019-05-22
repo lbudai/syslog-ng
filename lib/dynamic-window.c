@@ -66,6 +66,7 @@ dynamic_window_set_counter(DynamicWindow *self, DynamicWindowCounter *ctr)
 {
   self->ctr = ctr;
   dynamic_window_stat_reset(&self->stat);
+  dynamic_window_stat_reset(&self->ack_rate);
 }
 
 gsize
