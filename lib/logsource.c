@@ -72,6 +72,8 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
 
   if (old_window_size+window_size_increment == self->full_window_size)
     log_source_window_empty(self);
+
+  self->received_acks += window_size_increment;
 }
 
 static void
@@ -184,8 +186,12 @@ void
 log_source_dynamic_window_update_statistics(LogSource *self)
 {
   dynamic_window_stat_update(&self->dynamic_window.stat, window_size_counter_get(&self->window_size, NULL));
-  msg_trace("Updating dynamic window statistic", evt_tag_int("avg window size",
-                                                             dynamic_window_stat_get_avg(&self->dynamic_window.stat)));
+  dynamic_window_stat_update(&self->dynamic_window.ack_rate,
+                             self->received_acks - dynamic_window_stat_get_sum(&self->dynamic_window.ack_rate));
+
+  msg_trace("Updating dynamic window statistic",
+            evt_tag_int("avg_window_size", dynamic_window_stat_get_avg(&self->dynamic_window.stat)),
+            evt_tag_int("avg_ack_rate", dynamic_window_stat_get_avg(&self->dynamic_window.ack_rate)));
 }
 
 static inline void
@@ -247,14 +253,23 @@ log_source_dynamic_window_realloc(LogSource *self)
    * only incrementation is possible by destination threads */
 
   /* TODO: add abstraction for heuristics */
+
+
+  gsize current_ack_rate_avg = dynamic_window_stat_get_avg(&self->dynamic_window.ack_rate);
+  gboolean is_increase_allowed = self->dynamic_window.last_ack_rate_avg <= current_ack_rate_avg;
+
   gsize free_avg = dynamic_window_stat_get_avg(&self->dynamic_window.stat);
   if (free_avg > self->full_window_size * (self->options->dynamic_window_decrease_threshold / 100.0f))
     _decrease_window(self);
 
-  if (free_avg < self->full_window_size * (self->options->dynamic_window_increase_threshold / 100.0f))
+  gboolean should_increase = free_avg < self->full_window_size * (self->options->dynamic_window_increase_threshold / 100.0f);
+
+  if (is_increase_allowed && should_increase)
     _increase_window(self);
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
+  self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
+  dynamic_window_stat_reset(&self->dynamic_window.ack_rate);
 }
 
 void
