@@ -31,6 +31,7 @@
 #include "ack_tracker.h"
 #include "timeutils/misc.h"
 
+#include <math.h>
 #include <string.h>
 
 gboolean accurate_nanosleep = FALSE;
@@ -52,10 +53,39 @@ log_source_window_empty(LogSource *self)
   msg_diagnostics("LogSource window is empty");
 }
 
+static inline guint32
+_take_reclaimed_window(LogSource *self, guint32 window_size_increment)
+{
+  dynamic_window_stat_inc_value(&self->dynamic_window.ack_rate, window_size_increment);
+  gssize old = atomic_gssize_sub(&self->window_size_to_be_reclaimed, window_size_increment);
+  gsize reclaimed_dec = window_size_increment;
+
+  if (old > 0)
+    {
+      if (old - window_size_increment >= 0)
+        {
+          window_size_increment = 0; // all the acks goes back to the common window pool
+        }
+      else
+        {
+          reclaimed_dec = window_size_increment - old;
+          window_size_increment -= old;
+        }
+
+      atomic_gssize_add(&self->pending_reclaimed, reclaimed_dec);
+    }
+
+  return window_size_increment;
+}
+
 static inline void
 _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment, gboolean last_ack_type_is_suspended)
 {
   gboolean suspended;
+
+  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
+    window_size_increment = _take_reclaimed_window(self, window_size_increment);
+
   gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
 
   msg_diagnostics("Window size adjustment",
@@ -72,9 +102,6 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
 
   if (old_window_size+window_size_increment == self->full_window_size)
     log_source_window_empty(self);
-
-  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
-    dynamic_window_stat_inc_value(&self->dynamic_window.ack_rate, window_size_increment);
 }
 
 static void
@@ -195,31 +222,66 @@ log_source_dynamic_window_update_statistics(LogSource *self)
 }
 
 static inline void
-_decrease_window(LogSource *self)
+_log_source_reclaim_window(LogSource *self, gsize window_size)
 {
-  gsize new_full_window_size = MAX(self->options->init_window_size, self->full_window_size / 2);
+  g_assert(self->full_window_size - window_size >= self->options->init_window_size);
+  atomic_gssize_set(&self->window_size_to_be_reclaimed, window_size);
+}
+
+static inline gsize
+_calculate_new_full_window_size(LogSource *self, double dec_factor)
+{
+  static const double WINDOW_DECREASEMENT_BASE = 50.0;
+  static const double WINDOW_DECREASEMENT_MIN = 20.0;
+
+  g_assert(dec_factor <= 1.0);
+
+  double dec_win_size = self->full_window_size -
+                        MAX(WINDOW_DECREASEMENT_BASE * dec_factor, WINDOW_DECREASEMENT_MIN);
+  gsize new_full_window_size = MAX(self->options->init_window_size, dec_win_size);
+  return new_full_window_size;
+}
+
+static inline void
+_decrease_window(LogSource *self, double dec_factor)
+{
+  gsize new_full_window_size = _calculate_new_full_window_size(self, dec_factor);
   gsize subtrahend = self->full_window_size - new_full_window_size;
 
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize remaining_sub = 0;
   if (empty_window <= subtrahend)
     {
-      subtrahend = empty_window == 0 ? 0 : empty_window - 1;
+      remaining_sub = subtrahend - empty_window;
+      if (empty_window == 0)
+        {
+          subtrahend = 0;
+        }
+      else
+        {
+          subtrahend = empty_window - 1;
+        }
       new_full_window_size = self->full_window_size - subtrahend;
+      _log_source_reclaim_window(self, remaining_sub);
     }
-
-  window_size_counter_sub(&self->window_size, subtrahend, NULL);
 
   msg_trace("Decreasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
             evt_tag_int("new_window", new_full_window_size), log_pipe_location_tag(&self->super));
 
+
+  window_size_counter_sub(&self->window_size, subtrahend, NULL);
   self->full_window_size = new_full_window_size;
   dynamic_window_release(&self->dynamic_window, subtrahend);
 }
 
 static inline void
-_increase_window(LogSource *self)
+_increase_window(LogSource *self, double inc_factor)
 {
-  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, self->full_window_size);
+  static const double WINDOW_INCREASEMENT_BASE = 50.0;
+  static const double WINDOW_INCREASEMENT_MIN = 20.0;
+  double requested_win = MAX(WINDOW_INCREASEMENT_BASE * inc_factor, WINDOW_INCREASEMENT_MIN);
+
+  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, (gsize)requested_win);
 
   msg_trace("Increasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
             evt_tag_int("new_window", self->full_window_size + offered_dynamic), log_pipe_location_tag(&self->super));
@@ -239,11 +301,76 @@ _release_dynamic_window(LogSource *self)
   gsize dynamic_part = self->full_window_size - self->options->init_window_size;
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
             log_pipe_location_tag(&self->super));
+  gssize pending = atomic_gssize_get(&self->pending_reclaimed);
+  dynamic_part -= pending;
+
   self->full_window_size -= dynamic_part;
   window_size_counter_sub(&self->window_size, dynamic_part, NULL);
+  g_assert(window_size_counter_get(&self->window_size, NULL) == self->options->init_window_size);
   dynamic_window_release(&self->dynamic_window, dynamic_part); //TODO: rename release to ...
 
   dynamic_window_counter_unref(self->dynamic_window.ctr); //TODO: move to dynamic_window_release_counter()
+}
+
+static gboolean
+_reclaim_window_instead_of_realloc(LogSource *self)
+{
+  gboolean reclaim_in_progress = FALSE;
+  //check pending_reclaimed
+  gssize total_reclaim = (gssize)atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
+
+  if (total_reclaim > 0)
+    {
+      self->full_window_size -= total_reclaim;
+      dynamic_window_release(&self->dynamic_window, total_reclaim);
+      msg_warning("REALLOC::reclaiming pending window",
+                  evt_tag_int("pending_reclaimed", total_reclaim),
+                  evt_tag_int("sum_win", self->full_window_size));
+      if ((gssize)atomic_gssize_get(&self->window_size_to_be_reclaimed) > 0)
+        {
+          msg_warning("REALLOC: early return after reclaim pending");
+          reclaim_in_progress = TRUE;
+        }
+    }
+
+  return reclaim_in_progress;
+}
+
+static gboolean
+_update_ack_rate_stat_when_last_ack_rate_is_not_suitable(LogSource *self, gsize current_ack_rate_avg)
+{
+  msg_warning("update_ack_rate", evt_tag_int("last_ack_rate_avg", self->dynamic_window.last_ack_rate_avg));
+  if (self->dynamic_window.last_ack_rate_avg == 0)
+    {
+      self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg == 0 ? 1 : current_ack_rate_avg;
+      return TRUE;
+    }
+
+  if (self->dynamic_window.last_ack_rate_avg == -1)
+    {
+      self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+static double
+_calculate_change_factor(LogSource *self, gsize current_ack_rate_avg, gboolean *have_to_increase)
+{
+  double change_factor = (double)current_ack_rate_avg / (double)(self->dynamic_window.last_ack_rate_avg);
+
+  gboolean is_dest_performance_decreased = change_factor < 1.0;
+  gboolean is_dest_performance_increased = !is_dest_performance_decreased;
+
+  if (is_dest_performance_decreased && self->full_window_size == self->options->init_window_size)
+    {
+      is_dest_performance_increased = TRUE;
+      change_factor = 2.0;
+    }
+
+  *have_to_increase = is_dest_performance_increased;
+  return change_factor;
 }
 
 void
@@ -254,21 +381,35 @@ log_source_dynamic_window_realloc(LogSource *self)
 
   /* TODO: add abstraction for heuristics */
 
-
   gsize current_ack_rate_avg = dynamic_window_stat_get_avg(&self->dynamic_window.ack_rate);
-  gboolean is_increase_allowed = self->dynamic_window.last_ack_rate_avg <= current_ack_rate_avg;
 
-  gsize free_avg = dynamic_window_stat_get_avg(&self->dynamic_window.stat);
-  if (free_avg > self->full_window_size * (self->options->dynamic_window_decrease_threshold / 100.0f))
-    _decrease_window(self);
+  if (_reclaim_window_instead_of_realloc(self))
+    {
+      msg_warning("reclaim_window_instead_of_realloc");
+      goto update_statistics;
+    }
 
-  gboolean should_increase = free_avg < self->full_window_size * (self->options->dynamic_window_increase_threshold / 100.0f);
+  if (_update_ack_rate_stat_when_last_ack_rate_is_not_suitable(self, current_ack_rate_avg))
+    {
+      msg_warning("update_ack_rate_stat_instead_of_realloc");
+      goto update_statistics;
+    }
 
-  if (is_increase_allowed && should_increase)
-    _increase_window(self);
+  gboolean have_to_increase = TRUE;
+  double change_factor = _calculate_change_factor(self, current_ack_rate_avg, &have_to_increase);
 
-  dynamic_window_stat_reset(&self->dynamic_window.stat);
+  if (have_to_increase)
+    {
+      _increase_window(self, MIN(fabs(1.0 - change_factor), 2.0));
+    }
+  else
+    {
+      _decrease_window(self, MIN(fabs(1.0 - change_factor), 0.5));
+    }
+
+update_statistics:
   self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
+  dynamic_window_stat_reset(&self->dynamic_window.stat);
   dynamic_window_stat_reset(&self->dynamic_window.ack_rate);
 }
 
