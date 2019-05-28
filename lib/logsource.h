@@ -73,6 +73,9 @@ struct _LogSource
   gchar *stats_id;
   gchar *stats_instance;
   gsize full_window_size;
+  atomic_gssize window_size_to_be_reclaimed;
+  atomic_gssize pending_reclaimed;
+
   WindowSizeCounter window_size;
   DynamicWindow dynamic_window;
   StatsCounterItem *last_message_seen;
