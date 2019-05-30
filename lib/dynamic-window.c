@@ -77,6 +77,7 @@ dynamic_window_set_counter(DynamicWindow *self, DynamicWindowCounter *ctr)
   self->ctr = ctr;
   dynamic_window_stat_reset(&self->stat);
   dynamic_window_stat_reset(&self->ack_rate);
+  self->last_ack_rate_avg = -1;
 }
 
 gboolean
