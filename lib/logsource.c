@@ -374,6 +374,67 @@ _calculate_change_factor(LogSource *self, gsize current_ack_rate_avg, gboolean *
   return change_factor;
 }
 
+static void
+_inc_balanced(LogSource *self, gsize inc)
+{
+  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, inc);
+
+  msg_trace("Increasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
+            evt_tag_int("new_window", self->full_window_size + offered_dynamic), log_pipe_location_tag(&self->super));
+
+  msg_warning("DYNWINSTAT_PER_CONN::INC",
+              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
+              evt_tag_int("offered_win", -offered_dynamic),
+              evt_tag_printf("source", "%p", self)
+             );
+
+  self->full_window_size += offered_dynamic;
+
+  gsize old_window_size = window_size_counter_add(&self->window_size, offered_dynamic, NULL);
+  if (old_window_size == 0 && offered_dynamic != 0)
+    log_source_wakeup(self);
+}
+
+static void
+_dec_balanced(LogSource *self, gsize dec)
+{
+  gsize new_full_window_size = MAX(self->options->init_window_size, dec);
+  gsize subtrahend = self->full_window_size - new_full_window_size;
+
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize remaining_sub = 0;
+  if (empty_window <= subtrahend)
+    {
+      remaining_sub = subtrahend - empty_window;
+      if (empty_window == 0)
+        {
+          subtrahend = 0;
+        }
+      else
+        {
+          subtrahend = empty_window - 1;
+          remaining_sub--;
+        }
+      new_full_window_size = self->full_window_size - subtrahend;
+      _log_source_reclaim_window(self, remaining_sub);
+    }
+
+  msg_warning("DYNWINSTAT_PER_CONN::DEC",
+              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
+              evt_tag_int("offered_win", subtrahend),
+              evt_tag_printf("source", "%p", self),
+              evt_tag_int("future_req", remaining_sub)
+             );
+
+  window_size_counter_sub(&self->window_size, subtrahend, NULL);
+
+  msg_trace("Decreasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
+            evt_tag_int("new_window", new_full_window_size), log_pipe_location_tag(&self->super));
+
+  self->full_window_size = new_full_window_size;
+  dynamic_window_release(&self->dynamic_window, subtrahend);
+}
+
 void
 log_source_dynamic_window_realloc(LogSource *self)
 {
@@ -387,21 +448,30 @@ log_source_dynamic_window_realloc(LogSource *self)
   if (_reclaim_window_instead_of_realloc(self, current_ack_rate_avg))
     return;
 
-  if (_update_ack_rate_stat_when_last_ack_rate_is_not_suitable(self, current_ack_rate_avg))
-    return;
+  /*  if (_update_ack_rate_stat_when_last_ack_rate_is_not_suitable(self, current_ack_rate_avg))
+      return;*/
 
-  gboolean have_to_increase = TRUE;
-  double change_factor = _calculate_change_factor(self, current_ack_rate_avg, &have_to_increase);
-
+  //TODO: balance:
+  gsize current_dynamic_win = self->full_window_size - self->options->init_window_size;
+  gboolean have_to_increase = current_dynamic_win < self->dynamic_window.ctr->balanced_window;
+  gboolean have_to_decrease = current_dynamic_win > self->dynamic_window.ctr->balanced_window;
   if (have_to_increase)
-    {
-      _increase_window(self, MIN(fabs(1.0 - change_factor), 2.0));
-    }
-  else
-    {
-      _decrease_window(self, MIN(fabs(1.0 - change_factor), 0.5));
-    }
+    _inc_balanced(self, self->dynamic_window.ctr->balanced_window - current_dynamic_win);
+  else if (have_to_decrease)
+    _dec_balanced(self, current_dynamic_win - self->dynamic_window.ctr->balanced_window);
 
+  /*  gboolean have_to_increase = TRUE;
+    double change_factor = _calculate_change_factor(self, current_ack_rate_avg, &have_to_increase);
+
+    if (have_to_increase)
+      {
+        _increase_window(self, MIN(fabs(1.0 - change_factor), 2.0));
+      }
+    else
+      {
+        _decrease_window(self, MIN(fabs(1.0 - change_factor), 0.5));
+      }
+  */
   //TODO: check if we still need these values:
   gsize free_avg = dynamic_window_stat_get_avg(&self->dynamic_window.stat);
   gboolean window_almost_empty = free_avg > self->full_window_size * (self->options->dynamic_window_increase_threshold /
@@ -421,8 +491,7 @@ log_source_dynamic_window_realloc(LogSource *self)
               evt_tag_printf("window_almost_full", "%s", window_almost_full ? "yes" : "no"),
               evt_tag_printf("increase_window", "%s", have_to_increase ? "yes" : "no"),
               evt_tag_printf("decrese_window", "%s", have_to_increase ? "no" : "yes"),
-              evt_tag_printf("source", "%p", self),
-              evt_tag_printf("change_factor", "%f", change_factor));
+              evt_tag_printf("source", "%p", self));
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
   self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
