@@ -75,6 +75,7 @@ struct _LogSource
   gsize full_window_size;
   atomic_gssize window_size_to_be_reclaimed;
   atomic_gssize pending_reclaimed;
+  gsize rebalance_ticks;
 
   WindowSizeCounter window_size;
   DynamicWindow dynamic_window;

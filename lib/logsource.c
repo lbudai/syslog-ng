@@ -378,15 +378,6 @@ _inc_balanced(LogSource *self, gsize inc)
 {
   gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, inc);
 
-  msg_trace("Increasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
-            evt_tag_int("new_window", self->full_window_size + offered_dynamic), log_pipe_location_tag(&self->super));
-
-  msg_warning("DYNWINSTAT_PER_CONN::INC",
-              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
-              evt_tag_int("offered_win", -offered_dynamic),
-              evt_tag_printf("source", "%p", self)
-             );
-
   self->full_window_size += offered_dynamic;
 
   gsize old_window_size = window_size_counter_add(&self->window_size, offered_dynamic, NULL);
@@ -417,24 +408,14 @@ _dec_balanced(LogSource *self, gsize dec)
       _log_source_reclaim_window(self, remaining_sub);
     }
 
-  msg_warning("DYNWINSTAT_PER_CONN::DEC",
-              evt_tag_printf("t", "%lu.%lu", iv_now.tv_sec, iv_now.tv_nsec),
-              evt_tag_int("offered_win", subtrahend),
-              evt_tag_printf("source", "%p", self),
-              evt_tag_int("future_req", remaining_sub)
-             );
-
   window_size_counter_sub(&self->window_size, subtrahend, NULL);
-
-  msg_trace("Decreasing dynamic window", evt_tag_int("previous_window", self->full_window_size),
-            evt_tag_int("new_window", new_full_window_size), log_pipe_location_tag(&self->super));
 
   self->full_window_size = new_full_window_size;
   dynamic_window_release(&self->dynamic_window, subtrahend);
 }
 
-void
-log_source_dynamic_window_rebalance(LogSource *self)
+static void
+_log_source_dynamic_window_rebalance(LogSource *self)
 {
   if (_reclaim_window_instead_of_realloc(self))
     return;
@@ -447,14 +428,11 @@ log_source_dynamic_window_rebalance(LogSource *self)
     _inc_balanced(self, self->dynamic_window.ctr->balanced_window - current_dynamic_win);
   else if (have_to_decrease)
     _dec_balanced(self, current_dynamic_win - self->dynamic_window.ctr->balanced_window);
-
-  dynamic_window_stat_reset(&self->dynamic_window.stat);
-  self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
-  dynamic_window_stat_reset(&self->dynamic_window.ack_rate);
+  //TODO: update stat?
 }
 
-void
-log_source_dynamic_window_realloc(LogSource *self)
+static void
+_log_source_dynamic_window_realloc(LogSource *self)
 {
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
@@ -491,6 +469,30 @@ update_statistics:
   self->dynamic_window.last_ack_rate_avg = current_ack_rate_avg;
   dynamic_window_stat_reset(&self->dynamic_window.stat);
   dynamic_window_stat_reset(&self->dynamic_window.ack_rate);
+}
+
+void
+log_source_dynamic_window_realloc(LogSource *self)
+{
+  self->rebalance_ticks++;
+  msg_warning("REALLOC/REBALANCE",
+              evt_tag_printf("self", "%p", self),
+              evt_tag_long("prev_full_window", self->full_window_size));
+
+  if (self->rebalance_ticks == 5)
+    {
+      self->rebalance_ticks = 0;
+      msg_warning("REBALANCE....");
+      _log_source_dynamic_window_rebalance(self);
+    }
+  else
+    {
+      msg_warning("REALLOC....");
+      _log_source_dynamic_window_realloc(self);
+    }
+  msg_warning("REALLOC/REBALANCE",
+              evt_tag_printf("self", "%p", self),
+              evt_tag_long("new_full_window", self->full_window_size));
 }
 
 void
