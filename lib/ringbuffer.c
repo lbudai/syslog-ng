@@ -32,6 +32,7 @@ ring_buffer_init(RingBuffer *self)
   self->count = 0;
   self->capacity = 0;
   self->element_size = 0;
+  self->max_capacity = 0;
   self->buffer = NULL;
 }
 
@@ -44,7 +45,56 @@ ring_buffer_alloc(RingBuffer *self, guint32 element_size, guint32 capacity)
   self->count = 0;
   self->capacity = capacity;
   self->element_size = element_size;
+  self->max_capacity = capacity;
   self->buffer = g_malloc0(element_size * self->capacity);
+}
+
+static void
+_increase_capacity(RingBuffer *self, guint32 amount)
+{
+  if (ring_buffer_get_spare_capacity(self) < amount)
+    {
+      self->max_capacity *= 2;
+      self->buffer = g_realloc(self->buffer, self->max_capacity * self->element_size); //TODO: initialization?
+      g_assert(self->buffer);
+    }
+
+  self->capacity += amount;
+}
+
+static void
+_decrease_capacity(RingBuffer *self, guint32 amount)
+{
+  self->capacity -= amount;
+
+  if (ring_buffer_get_spare_capacity(self) > 2 * self->capacity)
+    {
+      self->max_capacity -= self->capacity;
+      self->buffer = g_realloc(self->buffer, self->max_capacity * self->element_size);
+      g_assert(self->buffer);
+    }
+}
+
+void
+ring_buffer_realloc(RingBuffer *self, guint32 new_capacity)
+{
+  g_assert(new_capacity > 0);
+
+  if (self->capacity == new_capacity)
+    return;
+
+  if (new_capacity > self->capacity)
+    _increase_capacity(self, new_capacity - self->capacity);
+  else
+    _decrease_capacity(self, self->capacity - new_capacity);
+
+  g_assert(self->capacity == new_capacity);
+}
+
+guint32
+ring_buffer_get_spare_capacity(RingBuffer *self)
+{
+  return self->max_capacity - self->capacity;
 }
 
 gboolean

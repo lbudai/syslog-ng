@@ -102,7 +102,7 @@ assert_test_data_idx_range_in(RingBuffer *rb, int start, int end)
 }
 
 
-Test(ringbuffer, test_init_buffer_state)
+/*Test(ringbuffer, test_init_buffer_state)
 {
   RingBuffer rb;
 
@@ -309,3 +309,39 @@ Test(ringbuffer, test_tail)
 
   ring_buffer_free(&rb);
 }
+*/
+
+Test(ringbuffer, test_realloc_inc)
+{
+  RingBuffer rb;
+  TestData *td_tail;
+
+  ring_buffer_alloc(&rb, sizeof(TestData), 103);
+  _ringbuffer_fill2(&rb, 103, 0, TRUE);
+  cr_assert_eq(ring_buffer_get_spare_capacity(&rb), 0);
+
+  ring_buffer_realloc(&rb, 110);
+  cr_assert_eq(ring_buffer_get_spare_capacity(&rb), 2 * 103 - 110);
+  ring_buffer_realloc(&rb, 110 + 96);
+  _ringbuffer_fill2(&rb, 96, 110, TRUE);
+  cr_assert_eq(ring_buffer_get_spare_capacity(&rb), 0);
+
+  ring_buffer_free(&rb);
+}
+
+Test(ringbuffer, test_realloc_dec)
+{
+  RingBuffer rb;
+  TestData *td_tail;
+
+  ring_buffer_alloc(&rb, sizeof(TestData), 103);
+  ring_buffer_realloc(&rb, 110);
+
+  _ringbuffer_fill2(&rb, 110, 0, TRUE);
+    cr_assert_eq(ring_buffer_get_spare_capacity(&rb), 2 * 103 - 110);
+  ring_buffer_realloc(&rb, 40); //2*103-110=96 > 2*40
+  cr_assert_eq(ring_buffer_get_spare_capacity(&rb), 180); //2-110-40
+
+  ring_buffer_free(&rb);
+}
+

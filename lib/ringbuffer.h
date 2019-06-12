@@ -35,12 +35,16 @@ typedef struct _RingBuffer
   guint32 count;
   guint32 capacity;
   guint32 element_size;
+  guint32 max_capacity;//spare_capacity, or, unused = max_capacity - capacity
 } RingBuffer;
 
 typedef gboolean(*RingBufferIsContinuousPredicate)(gpointer element);
 
 void ring_buffer_init(RingBuffer *self);
 void ring_buffer_alloc(RingBuffer *self, guint32 size_of_element, guint32 capacity);
+void ring_buffer_realloc(RingBuffer *self, guint32 new_capacity);
+guint32 ring_buffer_get_spare_capacity(RingBuffer *self);
+
 gboolean ring_buffer_is_allocated(RingBuffer *self);
 void ring_buffer_free(RingBuffer *self);
 
