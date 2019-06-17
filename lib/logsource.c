@@ -400,13 +400,22 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
     }
 }
 
-static inline void
+static AckTracker *
+_late_ack_tracker_new(LogSource *self)
+{
+  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
+    return late_ack_tracker_new_dynamic(self);
+
+  return late_ack_tracker_new(self);
+}
+
+static void
 _create_ack_tracker_if_not_exists(LogSource *self)
 {
   if (!self->ack_tracker)
     {
       if (self->pos_tracked)
-        self->ack_tracker = late_ack_tracker_new(self);
+        self->ack_tracker = _late_ack_tracker_new(self);
       else
         self->ack_tracker = early_ack_tracker_new(self);
     }
