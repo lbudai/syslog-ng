@@ -341,3 +341,13 @@ late_ack_tracker_new(LogSource *source)
   return (AckTracker *)self;
 }
 
+AckTracker *
+late_ack_tracker_new_dynamic(LogSource *source)
+{
+  LateAckTracker *self = g_new0(LateAckTracker, 1);
+
+  late_ack_tracker_init_instance(self, source);
+
+  return (AckTracker *)self;
+}
+

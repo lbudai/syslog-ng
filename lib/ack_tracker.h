@@ -44,6 +44,7 @@ struct _AckRecord
 };
 
 AckTracker *late_ack_tracker_new(LogSource *source);
+AckTracker *late_ack_tracker_new_dynamic(LogSource *source);
 AckTracker *early_ack_tracker_new(LogSource *source);
 
 static inline void
