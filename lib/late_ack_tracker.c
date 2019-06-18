@@ -23,51 +23,187 @@
  */
 
 #include "late_ack_tracker.h"
+#include "late_ack_record_container.h"
 #include "bookmark.h"
 #include "ringbuffer.h"
 #include "syslog-ng.h"
 
-typedef struct _LateAckRecord
+typedef struct _StaticLateAckRecordContainer
 {
-  AckRecord super;
-  gboolean acked;
-  Bookmark bookmark;
-} LateAckRecord;
+  LateAckRecordContainer super;
+} StaticLateAckRecordContainer;
+
+typedef struct _DynamicLateAckRecordContainer
+{
+  LateAckRecordContainer super;
+  GList *head;
+  GList *tail;
+  gsize size;
+  LateAckRecord *pending;
+} DynamicLateAckRecordContainer;
+
+void
+dynamic_ack_record_container_store_pending(LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *) s;
+
+  if (self->head == NULL)
+    {
+      self->head = g_list_append(self->head, self->pending);
+      self->tail = self->head;
+    }
+  else
+    {
+      g_assert(g_list_append(self->tail, self->pending) == self->tail);
+      self->tail = self->tail->next;
+    }
+
+  self->size++;
+  self->pending = NULL;
+}
+
+void
+dynamic_ack_record_container_drop(LateAckRecordContainer *s, gsize n)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *) s;
+  GList *delete_head = self->head;
+  GList *last = g_list_nth(self->head, n-1);
+  self->head = last->next;
+  self->size -= n;
+  last->next = NULL;
+  g_list_free_full(delete_head, g_free);
+}
+
+LateAckRecord *
+dynamic_ack_record_container_at(const LateAckRecordContainer *s, gsize idx)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *) s;
+
+  return (LateAckRecord *) g_list_nth(self->head, idx)->data;
+}
+
+LateAckRecord *
+dynamic_ack_record_container_request_pending(LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *)s;
+  if (self->pending)
+    return self->pending;
+
+  self->pending = g_new0(LateAckRecord, 1);
+
+  return self->pending;
+}
+
+gboolean
+dynamic_ack_record_container_is_empty(const LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *) s;
+
+  return (!self->head || self->size == 0);
+}
+
+void
+dynamic_ack_record_container_free(LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *)s;
+
+  if (self->pending)
+    {
+      late_ack_record_destroy(self->pending);
+      g_free(self->pending);
+      self->pending = NULL;
+    }
+
+  g_list_free_full(self->head, g_free);
+  self->head = NULL;
+}
+
+gsize
+dynamic_ack_record_container_size(const LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *)s;
+
+  return self->size;
+}
+
+static gboolean
+_ack_range_is_continuous(void *data)
+{
+  LateAckRecord *ack_rec = (LateAckRecord *)data;
+
+  return ack_rec->acked;
+}
+
+gsize 
+dynamic_ack_record_container_get_continual_range_length(const LateAckRecordContainer *s)
+{
+  DynamicLateAckRecordContainer *self = (DynamicLateAckRecordContainer *)s;
+  guint32 ack_range_length = 0;
+
+  for (GList *it = self->head;
+       it != NULL && _ack_range_is_continuous(it->data);
+       it = it->next)
+    {
+      ++ack_range_length;
+    }
+
+  return ack_range_length;
+}
+
+void
+ack_record_container_free(LateAckRecordContainer *self)
+{
+  self->free(self);
+}
+
+//TODO: method wrappers
+
+LateAckRecordContainer *
+dynamic_ack_record_container_new(void)
+{
+  DynamicLateAckRecordContainer *ack_record_container = g_new0(DynamicLateAckRecordContainer, 1);
+
+  ack_record_container->super.is_empty = dynamic_ack_record_container_is_empty;
+  ack_record_container->super.request_pending = dynamic_ack_record_container_request_pending;
+  ack_record_container->super.drop = dynamic_ack_record_container_drop;
+  ack_record_container->super.free = dynamic_ack_record_container_free;
+  ack_record_container->super.get_continual_range_length = dynamic_ack_record_container_get_continual_range_length;
+  ack_record_container->super.store_pending = dynamic_ack_record_container_store_pending;
+  ack_record_container->super.at = dynamic_ack_record_container_at;
+
+  return &ack_record_container->super;
+}
+
+LateAckRecordContainer *
+static_ack_record_container_new(void)
+{
+  StaticLateAckRecordContainer *ack_record_container = g_new0(StaticLateAckRecordContainer, 1);
+
+  return &ack_record_container->super;
+}
 
 typedef struct LateAckTracker
 {
   AckTracker super;
   LateAckRecord *pending_ack_record;
-  struct
-  {
-    GList *head;
-    GList *tail;
-    gsize size;
-    GStaticMutex mutex;
-  } ack_records;
+  LateAckRecordContainer *ack_records;
+  GStaticMutex mutex;
   AckTrackerOnAllAcked on_all_acked;
   gboolean bookmark_saving_disabled;
 } LateAckTracker;
-
-static inline void
-late_ack_record_destroy(LateAckRecord *self)
-{
-  if (self->bookmark.destroy)
-    self->bookmark.destroy(&(self->bookmark));
-}
 
 void
 late_ack_tracker_lock(AckTracker *s)
 {
   LateAckTracker *self = (LateAckTracker *)s;
-  g_static_mutex_lock(&self->ack_records.mutex);
+  g_static_mutex_lock(&self->mutex);
 }
 
 void
 late_ack_tracker_unlock(AckTracker *s)
 {
   LateAckTracker *self = (LateAckTracker *)s;
-  g_static_mutex_unlock(&self->ack_records.mutex);
+  g_static_mutex_unlock(&self->mutex);
 }
 
 void
@@ -99,30 +235,12 @@ late_ack_tracker_on_all_acked_call(AckTracker *s)
     }
 }
 
-static inline gboolean
-_ack_range_is_continuous(void *data)
-{
-  LateAckRecord *ack_rec = (LateAckRecord *)data;
-
-  return ack_rec->acked;
-}
-
 static void
 _ack_records_track_msg(LateAckTracker *self, LogMessage *msg)
 {
-  if (self->ack_records.head == NULL)
-    {
-      self->ack_records.head = g_list_append(self->ack_records.head, self->pending_ack_record);
-      self->ack_records.tail = self->ack_records.head;
-    }
-  else
-    {
-      g_assert(g_list_append(self->ack_records.tail, self->pending_ack_record) == self->ack_records.tail);
-      self->ack_records.tail = self->ack_records.tail->next;
-    }
-  self->ack_records.size++;
+  late_ack_record_container_store_pending(self->ack_records);
 
-  msg->ack_record = (AckRecord *)self->pending_ack_record;
+  msg->ack_record = (AckRecord *)self->pending_ack_record; //TODO
   self->pending_ack_record = NULL;
 }
 
@@ -143,43 +261,11 @@ late_ack_tracker_track_msg(AckTracker *s, LogMessage *msg)
   late_ack_tracker_unlock(s);
 }
 
-static guint32
-_ack_records_get_ack_range_length(LateAckTracker *self, GList **last_in_range)
-{
-  GList *last = NULL;
-  guint32 ack_range_length = 0;
-
-  for (GList *it = self->ack_records.head;
-       it != NULL && _ack_range_is_continuous(it->data);
-       it = it->next)
-    {
-      ++ack_range_length;
-      last = it;
-    }
-
-  if (last_in_range)
-    *last_in_range = last;
-
-  return ack_range_length;
-}
-
 static void
-_ack_records_save_bookmark(GList *ack_record_node)
+_ack_records_save_bookmark(LateAckRecord *ack_record)
 {
-  LateAckRecord *record = (LateAckRecord *) ack_record_node->data;
-
-  Bookmark *bookmark = &(record->bookmark);
+  Bookmark *bookmark = &(ack_record->bookmark);
   bookmark->save(bookmark);
-}
-
-static void
-_ack_records_delete_range(LateAckTracker *self, GList *last, guint32 ack_range_length)
-{
-  GList *delete_head = self->ack_records.head;
-  self->ack_records.head = last->next;
-  self->ack_records.size -= ack_range_length;
-  last->next = NULL;
-  g_list_free_full(delete_head, g_free);
 }
 
 static gboolean
@@ -191,27 +277,18 @@ _is_bookmark_saving_enabled(LateAckTracker *self)
 static guint32
 _ack_records_untrack_msg(LateAckTracker *self, LogMessage *msg, AckType ack_type)
 {
-  GList *last = NULL;
-  guint32 ack_range_length = 0;
-
-  ack_range_length = _ack_records_get_ack_range_length(self, &last);
+  guint32 ack_range_length = late_ack_record_container_get_continual_range_length(self->ack_records);
 
   if (ack_range_length > 0)
     {
       if (ack_type != AT_ABORTED && _is_bookmark_saving_enabled(self))
         {
-          _ack_records_save_bookmark(last);
+          _ack_records_save_bookmark(late_ack_record_container_at(self->ack_records, ack_range_length - 1));
         }
-      _ack_records_delete_range(self, last, ack_range_length);
+      late_ack_record_container_drop(self->ack_records, ack_range_length);
     }
 
   return ack_range_length;
-}
-
-static gboolean
-_ack_records_is_all_acked(LateAckTracker *self)
-{
-  return (!self->ack_records.head || self->ack_records.size == 0);
 }
 
 static void
@@ -234,7 +311,7 @@ late_ack_tracker_manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type
     else
       log_source_flow_control_adjust(self->super.source, ack_range_length);
 
-    if (_ack_records_is_all_acked(self))
+    if (late_ack_tracker_is_empty(s))
       late_ack_tracker_on_all_acked_call(s);
   }
   late_ack_tracker_unlock(s);
@@ -247,7 +324,7 @@ gboolean
 late_ack_tracker_is_empty(AckTracker *s)
 {
   LateAckTracker *self = (LateAckTracker *)s;
-  return !self->ack_records.head || self->ack_records.size == 0;
+  return late_ack_record_container_is_empty(self->ack_records);
 }
 
 static LateAckRecord *
@@ -264,7 +341,7 @@ late_ack_tracker_request_bookmark(AckTracker *s)
   LateAckTracker *self = (LateAckTracker *)s;
 
   if (!self->pending_ack_record)
-    self->pending_ack_record = _alloc_ack_record();
+    self->pending_ack_record = late_ack_record_container_request_pending(self->ack_records);
 
   if (self->pending_ack_record)
     {
@@ -289,13 +366,9 @@ late_ack_tracker_free(AckTracker *s)
       handler->user_data_free_fn(handler->user_data);
     }
 
-  g_static_mutex_free(&self->ack_records.mutex);
+  g_static_mutex_free(&self->mutex);
 
-  if (self->pending_ack_record)
-    g_free(self->pending_ack_record);
-
-  g_list_free_full(self->ack_records.head, g_free);
-  self->ack_records.head = NULL;
+  late_ack_record_container_free(self->ack_records);
 
   g_free(self);
 }
@@ -323,11 +396,12 @@ _setup_callbacks(LateAckTracker *self)
 }
 
 static void
-late_ack_tracker_init_instance(LateAckTracker *self, LogSource *source)
+late_ack_tracker_init_instance(LateAckTracker *self, LogSource *source, LateAckRecordContainer *ack_records)
 {
+  self->ack_records = ack_records;
   self->super.source = source;
   source->ack_tracker = (AckTracker *)self;
-  g_static_mutex_init(&self->ack_records.mutex);
+  g_static_mutex_init(&self->mutex);
   _setup_callbacks(self);
 }
 
@@ -335,8 +409,10 @@ AckTracker *
 late_ack_tracker_new(LogSource *source)
 {
   LateAckTracker *self = g_new0(LateAckTracker, 1);
+//  LateAckRecordContainer *ack_record_container = static_ack_record_container_new();
+  LateAckRecordContainer *ack_record_container = dynamic_ack_record_container_new();
 
-  late_ack_tracker_init_instance(self, source);
+  late_ack_tracker_init_instance(self, source, ack_record_container);
 
   return (AckTracker *)self;
 }
@@ -345,8 +421,9 @@ AckTracker *
 late_ack_tracker_new_dynamic(LogSource *source)
 {
   LateAckTracker *self = g_new0(LateAckTracker, 1);
+  LateAckRecordContainer *ack_record_container = dynamic_ack_record_container_new();
 
-  late_ack_tracker_init_instance(self, source);
+  late_ack_tracker_init_instance(self, source, ack_record_container);
 
   return (AckTracker *)self;
 }
