@@ -679,6 +679,27 @@ afsocket_sd_setup_reader_options(AFSocketSourceDriver *self)
       if (self->dynamic_window_size != 0)
         min_iw_size_per_reader = 1;
 
+      if (self->max_connections > 0 && self->dynamic_window_size > 0)
+        {
+          gint remainder = self->dynamic_window_size % self->max_connections;
+          if (remainder)
+            {
+              gsize new_dynamic_window_size = self->dynamic_window_size + (self->max_connections - remainder);
+              msg_warning("WARNING: dynamic-window-size() is advised to be a multiple of max-connections(), "
+                          "to achieve effective dynamic-window usage. Adjusting dynamic-window-size()",
+                          evt_tag_int("orig_dynamic_window_size", self->dynamic_window_size),
+                          evt_tag_int("new_dynamic_window_size", new_dynamic_window_size),
+                          log_pipe_location_tag(&self->super.super.super));
+              self->dynamic_window_size = new_dynamic_window_size;
+            }
+          if (self->dynamic_window_size / self->max_connections < 10)
+            {
+              msg_warning("WARNING: dynamic-window-size() is advised to be at least 10 times larger, than max-connections(), "
+                          "to achieve effective dynamic-window usage. Please update your configuration",
+                          log_pipe_location_tag(&self->super.super.super));
+            }
+        }
+
       self->reader_options.super.init_window_size /= self->max_connections;
       if (self->reader_options.super.init_window_size < min_iw_size_per_reader)
         {
