@@ -645,8 +645,16 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
    * configuration and we received a SIGHUP.  This means that opened
    * connections will not have their window_size changed. */
 
-  if ((gint)window_size_counter_get(&self->window_size, NULL) == -1)
+  gint win_size = window_size_counter_get(&self->window_size, NULL);
+  msg_trace("TRACE::log_source_set_options",
+            evt_tag_int("win_size", win_size),
+            evt_tag_long("win_size(gsize),", (gsize)win_size),
+            evt_tag_long("sizeof(gint)", sizeof(gint)),
+            evt_tag_long("sizeof(gsize)", sizeof(gsize)));
+  if ((gsize)win_size == (gsize)-1)
     {
+      msg_trace("log_source_set_options::setting window to init_window_size",
+          evt_tag_int("init_window_size", options->init_window_size));
       window_size_counter_set(&self->window_size, options->init_window_size);
       self->full_window_size = options->init_window_size;
     }
