@@ -30,6 +30,7 @@
 #include "window-size-counter.h"
 #include "dynamic-window.h"
 #include "mainloop.h"
+#include <iv_event.h>
 
 typedef struct _LogSourceOptions
 {
@@ -89,19 +90,13 @@ struct _LogSource
   glong window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
   AckTracker *ack_tracker;
+  struct iv_timer poll_sources_are_enabled;
 
   void (*wakeup)(LogSource *s);
   void (*schedule_dynamic_window_realloc)(LogSource *s);
 };
 
-static inline gboolean
-log_source_free_to_send(LogSource *self)
-{
-  if (G_UNLIKELY(!main_loop_sources_enabled(main_loop_get_instance())))
-    return FALSE;
-
-  return !window_size_counter_suspended(&self->window_size);
-}
+gboolean log_source_free_to_send(LogSource *self);
 
 static inline gint
 log_source_get_init_window_size(LogSource *self)

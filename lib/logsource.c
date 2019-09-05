@@ -37,6 +37,60 @@
 
 gboolean accurate_nanosleep = FALSE;
 
+static void
+_start_sources_are_enabled_timer(LogSource *self)
+{
+  if (iv_timer_registered(&self->poll_sources_are_enabled))
+    return;
+
+  iv_validate_now();
+
+  self->poll_sources_are_enabled.expires = iv_now;
+  self->poll_sources_are_enabled.expires.tv_sec += 1;
+
+  iv_timer_register(&self->poll_sources_are_enabled);
+}
+
+static void
+_stop_sources_are_enabled_timer(LogSource *self)
+{
+  if (iv_timer_registered(&self->poll_sources_are_enabled))
+    iv_timer_unregister(&self->poll_sources_are_enabled);
+}
+
+static void
+_check_sources_are_enabled(void *cookie)
+{
+  LogSource *self = (LogSource *)cookie;
+
+  MainLoop *main_loop = main_loop_get_instance();
+
+  if (main_loop_sources_enabled(main_loop))
+    log_source_wakeup(self);
+  else
+    _start_sources_are_enabled_timer(self);
+}
+
+static void
+_init_poll_source_are_enabled_timer(LogSource *self)
+{
+  IV_TIMER_INIT(&self->poll_sources_are_enabled);
+  self->poll_sources_are_enabled.cookie = self;
+  self->poll_sources_are_enabled.handler = _check_sources_are_enabled;
+}
+
+gboolean
+log_source_free_to_send(LogSource *self)
+{
+  if (G_UNLIKELY(!main_loop_sources_enabled(main_loop_get_instance())))
+    {
+      _start_sources_are_enabled_timer(self);
+      return FALSE;
+    }
+
+  return !window_size_counter_suspended(&self->window_size);
+}
+
 void
 log_source_wakeup(LogSource *self)
 {
@@ -480,6 +534,8 @@ log_source_init(LogPipe *s)
 
   stats_unlock();
 
+  _init_poll_source_are_enabled_timer(self);
+
   return TRUE;
 }
 
@@ -497,6 +553,8 @@ log_source_deinit(LogPipe *s)
   _unregister_window_stats(self);
 
   stats_unlock();
+
+  _stop_sources_are_enabled_timer(self);
 
   return TRUE;
 }
