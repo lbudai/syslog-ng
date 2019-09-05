@@ -277,6 +277,37 @@ control_connection_list_files(ControlConnection *cc, GString *command, gpointer 
   control_connection_send_reply(cc, result);
 }
 
+static GString *
+_format_result_enable_sources(MainLoop *main_loop, gboolean expected)
+{
+  GString *result = g_string_new("");
+
+  if (main_loop_sources_enabled(main_loop) == expected)
+    g_string_append_printf(result, "OK Sources are %s\n", expected ? "enabled" : "disabled");
+  else
+    g_string_append_printf(result, "FAIL Sources are %s\n",  expected ? "disabled" : "enabled");
+
+  return result;
+}
+
+static void
+control_connection_enable_sources(ControlConnection *cc, GString *command, gpointer user_data)
+{
+  MainLoop *main_loop = main_loop_get_instance();
+  main_loop_enable_sources(main_loop);
+
+  control_connection_send_reply(cc, _format_result_enable_sources(main_loop, TRUE));
+}
+
+static void
+control_connection_disable_sources(ControlConnection *cc, GString *command, gpointer user_data)
+{
+  MainLoop *main_loop = main_loop_get_instance();
+  main_loop_disable_sources(main_loop);
+
+  control_connection_send_reply(cc, _format_result_enable_sources(main_loop, FALSE));
+}
+
 ControlCommand default_commands[] =
 {
   { "LOG", control_connection_message_log },
@@ -287,6 +318,8 @@ ControlCommand default_commands[] =
   { "LICENSE", show_ose_license_info },
   { "PWD", process_credentials },
   { "LISTFILES", control_connection_list_files },
+  { "ENABLE_SOURCES", control_connection_enable_sources },
+  { "DISABLE_SOURCES", control_connection_disable_sources },
   { NULL, NULL },
 };
 
