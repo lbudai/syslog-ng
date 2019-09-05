@@ -29,6 +29,7 @@
 #include "stats/stats-registry.h"
 #include "window-size-counter.h"
 #include "dynamic-window.h"
+#include "mainloop.h"
 
 typedef struct _LogSourceOptions
 {
@@ -96,6 +97,9 @@ struct _LogSource
 static inline gboolean
 log_source_free_to_send(LogSource *self)
 {
+  if (G_UNLIKELY(!main_loop_sources_enabled(main_loop_get_instance())))
+    return FALSE;
+
   return !window_size_counter_suspended(&self->window_size);
 }
 
