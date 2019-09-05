@@ -132,6 +132,7 @@ struct _MainLoop
    */
   gboolean _is_terminating;
   gboolean last_config_reload_successful;
+  gboolean sources_are_enabled;
 
   /* signal handling */
   struct iv_signal sighup_poll;
@@ -576,6 +577,8 @@ main_loop_init(MainLoop *self, MainLoopOptions *options)
 
   self->options = options;
   scratch_buffers_automatic_gc_init();
+  self->sources_are_enabled = TRUE;
+
   main_loop_worker_init();
   main_loop_io_worker_init();
   main_loop_call_init();
@@ -677,6 +680,24 @@ void
 main_loop_thread_resource_deinit(void)
 {
   g_cond_free(thread_halt_cond);
+}
+
+void
+main_loop_enable_sources(MainLoop *self)
+{
+  self->sources_are_enabled = TRUE;
+}
+
+void
+main_loop_disable_sources(MainLoop *self)
+{
+  self->sources_are_enabled = FALSE;
+}
+
+gboolean
+main_loop_sources_enabled(MainLoop *self)
+{
+  return self->sources_are_enabled;
 }
 
 GQuark

@@ -84,6 +84,10 @@ gboolean main_loop_initialize_state(GlobalConfig *cfg, const gchar *persist_file
 void main_loop_thread_resource_init(void);
 void main_loop_thread_resource_deinit(void);
 
+void main_loop_enable_sources(MainLoop *self);
+void main_loop_disable_sources(MainLoop *self);
+gboolean main_loop_sources_enabled(MainLoop *self);
+
 #define MAIN_LOOP_ERROR main_loop_error_quark()
 
 GQuark main_loop_error_quark(void);
