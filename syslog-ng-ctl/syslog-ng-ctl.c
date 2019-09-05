@@ -552,6 +552,18 @@ slng_passwd_status(int argc, char *argv[], const gchar *mode, GOptionContext *ct
   return _dispatch_command(answer);
 }
 
+static gint
+slng_enable_sources(int argc, char *argv[], const gchar *mode, GOptionContext *ctx)
+{
+  return _dispatch_command("ENABLE_SOURCES");
+}
+
+static gint
+slng_disable_sources(int argc, char *argv[], const gchar *mode, GOptionContext *ctx)
+{
+  return _dispatch_command("DISABLE_SOURCES");
+}
+
 const gchar *
 get_mode(int *argc, char **argv[])
 {
@@ -610,6 +622,8 @@ static CommandDescriptor modes[] =
   { "credentials", no_options, "Credentials manager", NULL, credentials_commands },
   { "config", config_options, "Print current config", slng_config, NULL },
   { "list-files", no_options, "Print files present in config", slng_listfiles, NULL },
+  { "enable-sources", no_options, "Enable all configured sources to fetch logs", slng_enable_sources, NULL},
+  { "disable-sources", no_options, "Disable all configured sources to fetch logs", slng_disable_sources, NULL},
   { NULL, NULL },
 };
 
