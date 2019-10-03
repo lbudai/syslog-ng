@@ -1,60 +1,55 @@
-3.23.1
+3.24.1
 ======
 
+## Highlights
+
+ * Add a new template function called `format-flat-json()`, which generates
+   flattened json output. This is useful for destinations, where the json
+   parsing does not handle nested json format. (#2890)
+ * Add ISO 8601 compliant week numbering. Use it with the `${ISOWEEK}` macro
+   and the timestamp prefixes `P_, S_, R_, C_` (#2878)
+ * Send Server Name Identification (SNI) information with `transport(tls)`.
+   Enable it by setting the `sli(yes)` option in the `tls` block in your
+   `destination`. (#2930)
 
 ## Features
 
- * The `redis()` destination now handles any number of command parameters.
-   (#2816)
-
- * The `format()` option of `date-parser()` supports lists. From now on, a
-   single `date-parser()` instance is able to process different date formats,
-   making it easy to catch on when some programs change the way they log
-   information. (#2779)
-
- * Add relocation support for `disk-buffer()`. The `relocate` subcommand of
-   `dqtool` can be used to move a single or multiple queue files. (#2855)
-
- * `file(), pipe()`: The `time-reap()` option now can be set or disabled for
-   each destination separately.
-   Use `time-reap(0)` to disable closing idle destination files. (#2798)
-
- * `syslog-ng-ctl`: Add `list-files` subcommand to print files present in the
-   current configuration. (#2797)
+ * Timezone related `rewrite` rules (#2818)
+ * `templates`: change the `$LOGHOST` macro to honour `use-fqdn()` (#2894)
+ * `syslog-ng-sysconfdir` define (#2932)
+ * Dqtool assign to persist (#2872)
 
 ## Bugfixes
 
- * Fix minor memory leaks (#2868)
- * Add global context to standalone parsers (#2876)
- * Fix heap usage after free in cfg_run_parser_with_main_context (#2884)
- * Fix g_thread_init call order issue with older glibs (#2853)
- * SNMP destination: fixing statistics format (#2854)
- * eventlog: flush escaped_buffer when full (#2837)
- * dbparser: remove unnecessary lock (#2838)
- * dbparser: fix crash when context times out in the middle of another rule (#2832)
- * radix: fix grouping in PCRE (#2808)
- * add-contextual-data: make filters config plugin aware (#2886)
- * Undefined warning regression (#2829)
+ * Fix backtick substitution (#2906, #2909)
+ * Fix SCL block parameter substitution  (#2901)
+ * `logthrsource/fetcher`: crash after failed reload (#2907)
+ * `logsource`: add explicit (un)initialized state to `WindowSizeCounter` (#2893, #2895)
+ * Invalidate `LEGACY_MSGHDR` when `PID` or `PROGRAM` is `unset` (#2896)
+ * on 32bit platform `diskq` ftruncate could fail due to size 32/64 interface (#2892)
+ * Fix zoneinfo parser (#2898)
+ * `afinet`: fix multicast ip detection (#2905)
+ * `host-resolve`: try `getaddrinfo()` with different flags (#2933)
+ * Fix `wildcard-file()` option validation (#2922)
+ * `kafka-c`: Fix multiple memleaks (#2944)
 
 ## Other changes
 
- * Disable `time-reap()` on non-templated filenames by default (#2798)
- * The `--preprocess-into` command line flag accepts `-`, and writes the
-   preprocessed configuration to stdout. (#2869)
- * Add information on environment variables passed to the confgen script (#2888)
- * Light: minor fixes (#2867, #2844)
- * python: use malloc_debug for python unit tests (#2866)
- * Travis: verbose unit test output (#2851)
- * Travis cleanup (#2809)
- * filter: add unit tests to `filter-op` (#2835)
- * Fix clang/gcc diagnostic differences (#2810)
- * Fix leak in stats test (#2874)
- * cmake, autotools: -Wundef to enable-extra-warning  (#2806)
+ * `geoip`: remove deprecated module, `geoip2` database location detection (#2780)
+ * `persist-state`: add `g_assert` to `persist_state_map_entry` (#2945)
+ * Fix persist versions (#2914)
+ * Handle legacy `sql` qfile names (#2949)
+ * `afsocket-dest`: rename old persist entries (#2928)
+ * Timeutils refactor and performance improvements (#2935)
+ * various refactor, build issue fixes (#2902)
 
 ## Notes to the developers
 
- * Check whether commit messages are properly formatted (#2803, #2807)
- * gitignore: tags file and build directory (#2794)
+ * `LightRunWithStrace`: Run syslog-ng behind strace (#2921)
+ * `LightVerboseLogOnError`: Increase default pytest verbosity on error (#2919)
+ * Dbld image caching (#2858)
+ * Dbld gradle caching (#2857)
+ * `logreader,logsource`: move `scratch-buffer` mark and reclaim into `LogSource` (#2903)
 
 ## Credits
 
@@ -67,6 +62,6 @@ of syslog-ng, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Antal Nemes, Attila Szakacs, Balazs Scheidler, Gabor Nagy,
-Laszlo Budai, Laszlo Szemere, László Várady, Mark Bonsack, Mehul Prajapati,
-Péter Kókai, Romain Tartière, Zoltan Pallagi.
+Andras Mitzki, Antal Nemes, Attila Szakacs, Balazs Scheidler, Bertrand Jacquin,
+Gabor Nagy, Henrik Grindal Bakken, Kerin Millar, kjhee43, Laszlo Budai,
+Laszlo Szemere, László Várady, Péter Kókai, Raghunath Adhyapak, Zoltan Pallagi.
