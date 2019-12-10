@@ -55,41 +55,6 @@ _slot_lookup(GList *slot_objects, Slot slot)
   return (Slot) slot_node->data;
 }
 
-GList *
-_slots_remove_safely(GList *slot_objects, Slot slot)
-{
-  GList *slot_node = _slot_lookup_node(slot_objects, slot);
-
-  if (!slot_node)
-    return slot_objects;
-
-  if (slot_node->data == slot)
-    {
-      if (slot_node != slot_objects)
-        {
-          GList *head_new = g_list_remove_link(slot_objects, slot_node);
-          g_assert(head_new == slot_objects);
-          return slot_objects;
-        }
-
-      if (slot_node->next == NULL)
-        {
-          GList *head_null = g_list_remove_link(slot_objects, slot_node);
-          g_assert(head_null == NULL);
-          return NULL;
-        }
-
-      g_assert(slot_node == slot_objects);
-      GList *remove = slot_objects->next;
-      slot_objects->data = slot_objects->next->data;
-      GList *head_new = g_list_remove_link(slot_objects, slot_objects->next);
-      g_list_free(remove);
-      g_assert(head_new == slot_objects);
-    }
-
-  return slot_objects;
-}
-
 void
 signal_slot_connect(SignalSlotConnector *self, Signal signal, Slot slot)
 {
@@ -117,10 +82,6 @@ signal_slot_connect(SignalSlotConnector *self, Signal signal, Slot slot)
     {
       g_hash_table_insert(self->connections, signal, new_slots);
     }
-  else
-    {
-      g_assert(new_slots == slots);
-    }
 
   msg_debug("SignalSlotConnector::connect",
             evt_tag_printf("new connection registered",
@@ -128,6 +89,14 @@ signal_slot_connect(SignalSlotConnector *self, Signal signal, Slot slot)
                            self, signal, slot));
 exit_:
   g_mutex_unlock(self->lock);
+}
+
+static void
+_hash_table_replace(GHashTable *hash_table, gpointer key, gpointer new_value)
+{
+  g_hash_table_steal(hash_table, key);
+  gboolean inserted_as_new = g_hash_table_insert(hash_table, key, new_value);
+  g_assert(inserted_as_new);
 }
 
 void
@@ -143,13 +112,15 @@ signal_slot_disconnect(SignalSlotConnector *self, Signal signal, Slot slot)
   if (!slots)
     goto exit_;
 
-  GList *new_slots = _slots_remove_safely(slots, slot);
-  g_assert(new_slots == NULL || new_slots == slots);
-
   msg_debug("SignalSlotConnector::disconnect",
             evt_tag_printf("connector", "%p", self),
             evt_tag_printf("signal", "%p", signal),
             evt_tag_printf("slot", "%p", slot));
+
+  GList *new_slots = g_list_remove(slots, slot);
+
+  if (new_slots != slots)
+    _hash_table_replace(self->connections, signal, new_slots);
 
   if (!new_slots)
     {
@@ -159,6 +130,7 @@ signal_slot_disconnect(SignalSlotConnector *self, Signal signal, Slot slot)
                 evt_tag_printf("signal", "%p", signal),
                 evt_tag_printf("slot", "%p", slot));
     }
+
 exit_:
   g_mutex_unlock(self->lock);
 }
