@@ -80,7 +80,7 @@ signal_slot_connect(SignalSlotConnector *self, Signal signal, Slot slot)
 
   if (!signal_registered)
     {
-      g_hash_table_insert(self->connections, signal, new_slots);
+      g_hash_table_insert(self->connections, g_strdup(signal), new_slots);
     }
 
   msg_debug("SignalSlotConnector::connect",
@@ -95,7 +95,7 @@ static void
 _hash_table_replace(GHashTable *hash_table, gpointer key, gpointer new_value)
 {
   g_hash_table_steal(hash_table, key);
-  gboolean inserted_as_new = g_hash_table_insert(hash_table, key, new_value);
+  gboolean inserted_as_new = g_hash_table_insert(hash_table, g_strdup(key), new_value);
   g_assert(inserted_as_new);
 }
 
@@ -120,7 +120,7 @@ signal_slot_disconnect(SignalSlotConnector *self, Signal signal, Slot slot)
   GList *new_slots = g_list_remove(slots, slot);
 
   if (new_slots != slots)
-    _hash_table_replace(self->connections, signal, new_slots);
+    _hash_table_replace(self->connections, (gpointer) signal, new_slots);
 
   if (!new_slots)
     {
@@ -155,11 +155,11 @@ signal_slot_emit(SignalSlotConnector *self, Signal signal, gpointer user_data)
     {
       msg_debug("SignalSlotConnector: unregistered signal emitted",
                 evt_tag_printf("connector", "%p", self),
-                evt_tag_printf("signal", "%p", signal));
+                evt_tag_printf("signal", "%s", signal));
       return;
     }
 
-  signal(user_data);
+  msg_debug("SignalSlotConnector::emit", evt_tag_str("signal", signal));
 
   g_list_foreach(slots, _run_slot, user_data);
 }
@@ -179,9 +179,9 @@ signal_slot_connector_new(void)
 {
   SignalSlotConnector *self = g_new0(SignalSlotConnector, 1);
 
-  self->connections = g_hash_table_new_full(g_direct_hash,
-                                            g_direct_equal,
-                                            NULL,
+  self->connections = g_hash_table_new_full(g_str_hash,
+                                            g_str_equal,
+                                            g_free,
                                             _destroy_list_of_slots);
 
   self->lock = g_mutex_new();
