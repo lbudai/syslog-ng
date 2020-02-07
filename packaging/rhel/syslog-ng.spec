@@ -1,6 +1,23 @@
-
-%bcond_with python3
-%bcond_without python2
+# Reasonable defaults for building on CentOS 7
+%global _without_python2 1
+%global _without_python3 1
+%global _without_sql 1
+%global _without_mongodb 1
+%global _without_legacy_mongodb_options 1
+%global _with_systemd 1
+%global _without_redis 1
+%global _without_riemann 1
+%global _with_maxminddb 1
+%global _without_amqp 1
+%global _without_java  1
+%global _without_kafka  1
+%global _without_snmpdest 1 
+%global _without_http 1 
+%global _without_systemd 1 
+%global _without_smtp 1 
+%global _without_geoip 1 
+%global _without_geoip2 1
+%global _without_stomp 1 
 
 %if 0%{with python3} && 0%{with python2}
 %{error:Can't build with python2 and python3 at the same type, use one of --with python2 or --with python3}
@@ -15,17 +32,20 @@ Intentional syntax error to cause rpmbuild to abort.
 %global with_python3 0
 %endif
 
-%if 0%{?rhel} >= 7 || 0%{?fedora} >= 28
+%if 0%{?rhel} >= 7 || 0%{?fedora} >= 30
 %bcond_without sql
-%bcond_without mongodb
-%bcond_without systemd
-%bcond_without redis
-%bcond_without riemann
-%bcond_without maxminddb
-%bcond_without amqp
-%bcond_without java
-%bcond_without kafka
-%bcond_without snmpdest
+%bcond_without mongodb 
+%bcond_without systemd 
+%bcond_without redis 
+%bcond_without riemann 
+%bcond_without maxminddb 
+%bcond_without amqp 
+%bcond_without java 
+%bcond_without kafka 
+%bcond_without snmpdest 
+%bcond_without geoip
+%bcond_without geoip2
+%bcond_without stomp
 
 %if 0%{with python2}
 %global		python_devel python-devel
@@ -41,7 +61,6 @@ Intentional syntax error to cause rpmbuild to abort.
 %global		python_devel python3-devel
 %global         py_ver  %{python3_version}
 %endif
-
 %endif
 
 %else
@@ -95,7 +114,9 @@ BuildRequires: libuuid-devel
 BuildRequires: libesmtp-devel
 BuildRequires: libcurl-devel
 
+%if %{with python2} || %{with python3}
 BuildRequires: %{python_devel}
+%endif
 
 %if %{with amqp}
 BuildRequires: librabbitmq-devel
@@ -179,6 +200,7 @@ Key features:
  * normalize, crunch and process logs as they flow through the system
  * hand on messages for further processing using message queues (like
    AMQP), files or databases (like PostgreSQL or MongoDB).
+ * secure logging with tamper evidence and enhanced log archive verification
 
 %package sql
 Summary: SQL support for %{name}
@@ -326,21 +348,85 @@ export GEOIP_LIBS=-lGeoIP
     --with-linux-caps=auto \
     --enable-json \
     --enable-ssl \
+%if %{with smtp} 
     --enable-smtp \
+%else
+    --disable-smtp \
+%endif
+%if %{with geoip}
+    --enable-geoip \
+%else
+    --disable-geoip \
+%endif
     --enable-shared \
     --disable-static \
     --enable-dynamic-linking \
+%if %{with python2} || %{with python3}
     --enable-python \
     --with-python=%{py_ver} \
-    %{?with_kafka:--enable-kafka} \
-    %{?with_snmpdest:--enable-snmp-dest} %{!?with_snmpdest:--disable-snmp-dest} \
-    %{?with_java:--enable-java} %{!?with_java:--disable-java} \
-    %{?with_sql:--enable-sql} \
-    %{?with_systemd:--enable-systemd} \
-    %{?with_mongodb:--enable-mongodb} \
-    %{?with_amqp:--enable-amqp} \
-    %{?with_redis:--enable-redis} \
-    %{?with_riemann:--enable-riemann}
+%else
+    --disable-python \
+%endif
+%if %{with http} 
+    --enable-http \
+%else
+    --disable-http \
+%endif
+%if %{with kafka} 
+    --enable-kafka \
+%else
+    --disable-kafka \
+%endif
+%if %{with snmpdest} 
+    --enable-snmp-dest \
+%else
+    --disable-snmp-dest \
+%endif
+%if %{with java}
+    --enable-java \
+%else
+    --disable-java \
+%endif
+%if %{with sql} 
+    --enable-sql \ 
+%else
+    --disable-sql \
+%endif
+%if %{with systemd} 
+    --enable-systemd \
+%else
+    --disable-systemd \
+%endif
+%if  %{with mongodb} 
+    --enable-mongodb \
+%else
+    --disable-mongodb \
+%endif
+%if  %{with legacy_mongodb_options} 
+    --enable-legacy-mongodb-options \
+%else
+    --disable-legacy-mongodb-options \
+%endif
+%if %{with amqp}
+    --enable-amqp \
+%else
+    --disable-amqp \
+%endif
+%if %{with redis} 
+    --enable-redis \
+%else
+    --disable-redis \
+%endif
+%if %{with maxminddb} 
+    --enable-maxminddb \
+%else
+    --disable-maxminddb \
+%endif
+%if %{with redis} 
+    --enable-riemann
+%else
+    --disable-riemann 
+%endif
 
 # disable broken test by setting a different target
 sed -i 's/libs build/libs assemble/' Makefile
@@ -362,7 +448,6 @@ make DESTDIR=%{buildroot} install
 # remove unused service file
 rm %{buildroot}/usr/lib/systemd/system/syslog-ng@.service
 %endif
-
 
 # create the local state dir
 %{__install} -d -m 755 %{buildroot}/%{_sharedstatedir}/%{name}
@@ -446,6 +531,9 @@ fi
 %{_bindir}/dqtool
 %{_bindir}/update-patterndb
 %{_bindir}/persist-tool
+%{_bindir}/slogkey
+%{_bindir}/slogimport
+%{_bindir}/slogverify
 %{_libdir}/lib%{name}-*.so.*
 %{_libdir}/libevtlog-*.so.*
 %{_libdir}/libsecret-storage.so.*
@@ -503,6 +591,9 @@ fi
 %{_mandir}/man1/loggen.1*
 %{_mandir}/man1/pdbtool.1*
 %{_mandir}/man1/dqtool.1*
+%{_mandir}/man1/slogkey.1*
+%{_mandir}/man1/slogimport.1*
+%{_mandir}/man1/slogverify.1*
 %{_mandir}/man1/syslog-ng-debun.1*
 %{_mandir}/man1/syslog-ng-ctl.1*
 %{_mandir}/man5/syslog-ng.conf.5*
@@ -538,8 +629,10 @@ fi
 %{_libdir}/%{name}/libsnmpdest.so
 %endif
 
+%if %{with smtp}
 %files smtp
 %{_libdir}/%{name}/libafsmtp.so
+%endif
 
 %if %{with java}
 %files java
@@ -548,7 +641,16 @@ fi
 %{_libdir}/%{name}/java-modules/*
 %endif
 
+%if %{with geoip}
 %files geoip
+%{_libdir}/%{name}/libgeoip-plugin.so
+%endif
+
+%if %{with geoip2}
+%files geoip
+%{_libdir}/%{name}/libgeoip2-plugin.so
+%endif
+
 %if %{with maxminddb}
 %{_libdir}/%{name}/libgeoip2-plugin.so
 %endif
@@ -558,14 +660,18 @@ fi
 %{_libdir}/%{name}/libriemann.so
 %endif
 
+%if %{with http}
 %files http
 %{_libdir}/%{name}/libhttp.so
 %{_libdir}/%{name}/libazure-auth-header.so
+%endif
 
+%if %{with python2} || %{with python3}
 %files python
 %{_libdir}/%{name}/python/syslogng-1.0-py%{py_ver}.egg-info
 %{_libdir}/%{name}/python/syslogng/*
 %{_libdir}/%{name}/libmod-python.so
+%endif
 
 %files devel
 %{_libdir}/libsyslog-ng.so
@@ -599,7 +705,13 @@ fi
 * Tue Oct 01 2019 Laszlo Budai <laszlo.budai@balabit.com> - 3.24.1-1
 - update to 3.24.1
 
+* Tue Sep  10 2019 Stephan Marwedel <stephan.marwedel@airbus.com> - 3.23.1-2
+- inclusion of secure logging feature to provide forward integrity
+  and confidentiality with enhanced log archive verification
+
 * Fri Aug 16 2019 Laszlo Budai <laszlo.budai@balabit.com> - 3.23.1-1
+
+* Thu Aug  15 2019 Laszlo Budai <laszlo.budai@balabit.com> - 3.23.1-1
 - update to 3.23.1
 
 * Sun Jun 16 2019 Balazs Scheidler <balazs.scheidler@oneidentity.com> - 3.22.1-1
