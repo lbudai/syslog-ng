@@ -15,6 +15,8 @@ set(PYTHON_SOURCES
     python-persist.c
     python-helpers.h
     python-helpers.c
+    python-http-header.h
+    python-http-header.c
     python-main.h
     python-main.c
     python-plugin.c
@@ -64,6 +66,7 @@ add_subdirectory(pylib)
 add_library(mod-python SHARED ${PYTHON_SOURCES})
 target_include_directories (mod-python PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories (mod-python PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories (mod-python PRIVATE ${PROJECT_SOURCE_DIR})
 target_include_directories (mod-python PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(mod-python PRIVATE syslog-ng ${PYTHON_LIBRARIES} ${Eventlog_LIBRARIES} ${IVYKIS_LIBRARIES})
 
