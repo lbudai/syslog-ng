@@ -32,6 +32,7 @@ typedef struct _HttpHeaderRequestSignalData HttpHeaderRequestSignalData;
 
 struct _HttpHeaderRequestSignalData
 {
+  GError *error;
   List *request_headers;
   GString *request_body;
 };
