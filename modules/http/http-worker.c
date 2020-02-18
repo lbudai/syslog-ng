@@ -185,7 +185,7 @@ _append_auth_header(List *list, HTTPDestinationDriver *owner)
     }
 }
 
-static void
+static gboolean
 _collect_rest_headers(HTTPDestinationWorker *self)
 {
   HttpHeaderRequestSignalData signal_data =
@@ -204,7 +204,10 @@ _collect_rest_headers(HTTPDestinationWorker *self)
                 evt_tag_str("signal", signal_http_header_request),
                 evt_tag_str("reason", signal_data.error->message));
       g_clear_error(&signal_data.error);
+      return FALSE;
     }
+
+  return TRUE;
 }
 
 
@@ -242,7 +245,7 @@ _add_common_headers(HTTPDestinationWorker *self)
     list_append(self->request_headers, l->data);
 }
 
-static void
+static gboolean
 _format_request_headers(HTTPDestinationWorker *self)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
@@ -252,7 +255,7 @@ _format_request_headers(HTTPDestinationWorker *self)
   if (owner->auth_header)
     _append_auth_header(self->request_headers, owner);
 
-  _collect_rest_headers(self);
+  return _collect_rest_headers(self);
 }
 
 static void
@@ -610,7 +613,8 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
     return LTR_RETRY;
 
   _finish_request_body(self);
-  _format_request_headers(self);
+  if (!_format_request_headers(self))
+    return LTR_NOT_CONNECTED;
 
   target = http_load_balancer_choose_target(owner->load_balancer, &self->lbc);
 
@@ -689,7 +693,8 @@ static gboolean
 _thread_init(LogThreadedDestWorker *s)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
-  HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
+  HTTPDestinationDriver *owner =)
+    return LTR_NOT_CONNECTED;(HTTPDestinationDriver *) self->super.owner;
 
   self->request_body = g_string_sized_new(32768);
   self->request_headers = http_curl_header_list_new();
