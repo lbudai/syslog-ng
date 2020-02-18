@@ -190,6 +190,7 @@ _collect_rest_headers(HTTPDestinationWorker *self)
 {
   HttpHeaderRequestSignalData signal_data =
   {
+    .error = NULL,
     .request_headers = self->request_headers,
     .request_body = self->request_body
   };
@@ -197,6 +198,13 @@ _collect_rest_headers(HTTPDestinationWorker *self)
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
   EMIT(owner->super.super.super.super.signal_slot_connector, signal_http_header_request, &signal_data);
+  if (signal_data.error)
+    {
+      msg_error("Error during slot execution",
+                evt_tag_str("signal", signal_http_header_request),
+                evt_tag_str("reason", signal_data.error->message));
+      g_clear_error(&signal_data.error);
+    }
 }
 
 
