@@ -200,11 +200,15 @@ _collect_rest_headers(HTTPDestinationWorker *self)
   EMIT(owner->super.super.super.super.signal_slot_connector, signal_http_header_request, &signal_data);
   if (signal_data.error)
     {
+      gboolean propagate_error = FALSE;
       msg_error("Error during slot execution",
                 evt_tag_str("signal", signal_http_header_request),
                 evt_tag_str("reason", signal_data.error->message));
+      if (signal_data.error->code == ...IGNORE)
+        propagate_error = TRUE;
       g_clear_error(&signal_data.error);
-      return FALSE;
+      if (propagate_error)
+        return FALSE;
     }
 
   return TRUE;
