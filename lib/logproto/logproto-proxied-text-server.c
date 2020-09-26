@@ -80,7 +80,7 @@ static LogProtoStatus
 _log_proto_proxied_text_server_handshake(LogProtoServer *s)
 {
   const guchar *msg;
-  gsize msg_len;
+  gsize msg_len = 0;
   gboolean may_read = TRUE;
   gboolean parsable;
   LogProtoStatus status;
@@ -90,8 +90,12 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
   // Fetch a line from the transport layer
   status = self->fetch_from_buffer(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
 
-  if (status != LPS_SUCCESS)
-    return status;
+  if (status != LPS_SUCCESS || msg_len == 0)
+    {
+      if (msg_len == 0)
+        self->handshake_done = FALSE;
+      return status;
+    }
 
   parsable = _log_proto_proxied_text_server_parse_header(self, msg, msg_len);
 
