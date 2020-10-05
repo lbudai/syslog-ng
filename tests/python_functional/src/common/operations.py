@@ -52,3 +52,9 @@ def copy_shared_file(testcase_parameters, shared_file_name):
 def delete_session_file(shared_file_name):
     shared_file_name = Path(tc_parameters.WORKING_DIR, shared_file_name)
     shared_file_name.unlink()
+
+
+def write_to_file(path, content):
+    f = open(str(path), "a")
+    f.write(content)
+    f.close()
